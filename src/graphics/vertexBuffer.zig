@@ -1,4 +1,4 @@
-// graphics/VertexBuffer.zig
+// graphics/vertexBuffer.zig
 const std = @import("std");
 const c = @import("../c.zig");
 
@@ -34,6 +34,8 @@ pub const VertexBuffer = struct {
             };
             c.glVertexAttribPointer(@intCast(i), size, desc.data_type, c.GL_FALSE, 5 * @sizeOf(f32), @ptrFromInt(offset));
             c.glEnableVertexAttribArray(@intCast(i));
+
+            std.debug.print("Attribute: {}, Offset: {}\n", .{ i, offset }); 
             offset += @intCast(size * @sizeOf(f32));
         }
 
@@ -56,6 +58,7 @@ pub const VertexBuffer = struct {
     }
 
     pub fn draw(self: *VertexBuffer) void {
+        std.debug.print("Drawing with: mode={}; count={}; type={}; offset=null\n", .{c.GL_TRIANGLES, self.index_count, c.GL_UNSIGNED_INT});
         c.glDrawElements(c.GL_TRIANGLES, @intCast(self.index_count), c.GL_UNSIGNED_INT, null);
     }
 };

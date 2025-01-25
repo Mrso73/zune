@@ -2,11 +2,16 @@ const std = @import("std");
 const zune = @import("zune"); // The Engine
 const c = @import("zune").c;
 
+const WINDOW_WIDTH = 1200;
+const WINDOW_HEIGHT = 900;
+
 pub fn main() !void {
+
     // Initialize allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+
 
     //setup time utitilites
     var time = zune.utils.Time.Time.init(.{
@@ -14,28 +19,34 @@ pub fn main() !void {
         .fixed_timestep = 1.0 / 60.0,
     });
 
+
     // setup the input system
     var input = try zune.core.Input.init(allocator);
     defer input.deinit();
 
+
     // create a window
     const window = try zune.core.Window.init(allocator, .{
-        .title = "Zune test",
-        .width = 800,
-        .height = 600,
+        .title = "zune example-1",
+        .width = WINDOW_WIDTH,
+        .height = WINDOW_HEIGHT,
         .transparent = false,
         .decorated = true,
     });
     defer window.deinit();
 
+
     // create a renderer
     var renderer = try zune.graphics.Renderer.init(allocator);
     defer renderer.deinit();
 
+
     // create a camera
-    var camera = zune.core.PerspectiveCamera.init(std.math.degreesToRadians(45.0), 800.0 / 600.0, 0.1, 100.0);
+    var camera = zune.core.PerspectiveCamera.init(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
     camera.setPosition(0.0, 0.0, 5.0);
-    camera.lookAt(0.0, 0.0, 0.0);
+    camera.lookAt(0.0, 0.0, 0.0); // z maybe -1
+
+    renderer.setActiveCamera(&camera); // Set the active camera for the renderer
 
     // -----------
 
@@ -44,11 +55,12 @@ pub fn main() !void {
 
     // Create a simple triangle mesh
     const vertices = [_]f32{
-        // positions      // texture coords
-        0.0, 0.5, 0.0, 0.5, 1.0, // top
-        -0.5, -0.5, 0.0, 0.0, 0.0, // left
-        0.5, -0.5, 0.0, 1.0, 0.0, // right
+        0.0,  0.5, 0.0,   0.5, 1.0, // top
+        -0.5, -0.5, 0.0,   0.0, 0.0, // left
+        0.5, -0.5, 0.0,   1.0, 0.0, // right
     };
+
+    std.debug.print("Vertices: {any}\n", .{vertices});
 
     const indices = [_]u32{ 0, 1, 2 };
 
@@ -67,16 +79,14 @@ pub fn main() !void {
     );
     defer triangle.deinit();
 
-    // Get the default shader and cache uniforms
-    var shader = renderer.default_shader;
-    try shader.cacheUniform("model", .Mat4);
-    try shader.cacheUniform("view", .Mat4);
-    try shader.cacheUniform("projection", .Mat4);
-    try shader.cacheUniform("color", .Vec4);
+    // Create a Material using the default shader
+    //var material = try zune.graphics.Material.init(renderer.default_shader, .{ 1.0, 0.0, 0.0, 1.0 }); // Red color
+    var material = try zune.graphics.Material.init(&renderer.default_shader, .{ 1.0, 0.0, 0.0, 1.0 }); // Red color
+    defer material.deinit();
 
     // Set viewport
-    const size = window.getSize();
-    renderer.setViewport(0, 0, @intCast(size.width), @intCast(size.height));
+    const window_size = window.getSize();
+    renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
 
     // Simple model matrix (identity)
     const model = [16]f32{
@@ -107,21 +117,8 @@ pub fn main() !void {
 
         // --------------------------------------------------------
 
-        // Use shader and set uniforms
-        renderer.useShader(shader);
-        zune.err.gl.checkGLError("after shader use");
-
-        try shader.setUniformMat4("model", &model);
-        try shader.setUniformMat4("view", &camera.base.view_matrix);
-        try shader.setUniformMat4("projection", &camera.base.projection_matrix);
-        try shader.setUniformVec4("color", .{ 1.0, 0.0, 0.0, 1.0 }); // Bright red color
-        zune.err.gl.checkGLError("After setting uniforms");
-
-        // Bind and draw triangle
-        triangle.bind();
-        zune.err.gl.checkGLError("After bind");
-
-        triangle.draw();
+        // **Simplified drawing using Material and Renderer::draw**
+        try renderer.draw(&triangle, &material, &model); // Pass material and model matrix
         zune.err.gl.checkGLError("After draw");
 
         // --------------------------------------------------------

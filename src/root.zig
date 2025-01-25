@@ -18,6 +18,8 @@ pub const core = struct {
 
 // Graphics functionality
 pub const graphics = struct {
+    pub const Material = @import("graphics/material.zig").Material;
+
     pub const Renderer = @import("graphics/renderer.zig").Renderer;
 
     pub const Shader = @import("graphics/shader.zig").Shader;
@@ -39,7 +41,7 @@ pub const utils = struct {
 };
 
 pub const err = struct {
-    pub const gl = @import("gl.zig");
+    pub const gl = @import("err/gl.zig");
 };
 
 // Framework version info
