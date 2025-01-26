@@ -7,10 +7,6 @@ pub const core = struct {
     pub const Window = @import("core/window.zig").Window;
     pub const WindowConfig = @import("core/window.zig").WindowConfig;
 
-    pub const Input = @import("core/input.zig").Input;
-    pub const KeyState = @import("core/input.zig").KeyState;
-    pub const KeyMods = @import("core/input.zig").KeyMods;
-
     pub const OrthographicCamera = @import("core/camera.zig").OrthographicCamera;
     pub const PerspectiveCamera = @import("core/camera.zig").PerspectiveCamera;
     //pub const FirstPersonCamera = @import("core/camera.zig").FirstPersonCamera;

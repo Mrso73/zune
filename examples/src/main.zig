@@ -20,9 +20,7 @@ pub fn main() !void {
     });
 
 
-    // setup the input system
-    var input = try zune.core.Input.init(allocator);
-    defer input.deinit();
+    // TODO: setup input manager
 
 
     // create a window
@@ -86,9 +84,7 @@ pub fn main() !void {
     while (!window.shouldClose()) {
 
         // ==== Set Time variables ==== \\
-
         time.update();
-        input.update();
 
         // Get delta time
         //const dt = time.getDelta();
@@ -96,11 +92,9 @@ pub fn main() !void {
 
         // ==== Process Input ==== \\
 
-        if (input.isKeyPressed(zune.core.Input.Key.SPACE)) {
-            window.setTitle("wow sick");
-            std.debug.print("ye", .{});
-        }
 
+
+        // ==== Update Program ==== \\
         // Fixed updates (at fixed timestep intervals)
         while (time.shouldFixedUpdate()) {
             const fixed_dt = time.getFixedTimestep();
