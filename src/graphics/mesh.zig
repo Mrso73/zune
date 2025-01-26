@@ -13,6 +13,76 @@ pub const Mesh = struct {
         };
     }
 
+    pub fn createQuad() !Mesh {
+        // Quad vertices: 4 points with positions (x,y,z) and tex coords (u,v)
+        const vertices = [_]f32{
+            // Positions          // TexCoords
+            -0.5, -0.5, 0.0,     0.0, 0.0, // Bottom-left
+             0.5, -0.5, 0.0,     1.0, 0.0, // Bottom-right
+             0.5,  0.5, 0.0,     1.0, 1.0, // Top-right
+            -0.5,  0.5, 0.0,     0.0, 1.0, // Top-left
+        };
+        const indices = [_]u32{
+            0, 1, 2, // First triangle
+            2, 3, 0, // Second triangle
+        };
+        return Mesh.init(
+            &vertices,
+            &indices,
+            VertexLayout.PosTex()
+        );
+    }
+
+    pub fn createCube() !Mesh {
+        // Cube vertices: 8 points with positions (x,y,z)
+        const vertices = [_]f32{
+            // Front
+            -0.5, -0.5,  0.5, // 0
+             0.5, -0.5,  0.5, // 1
+             0.5,  0.5,  0.5, // 2
+            -0.5,  0.5,  0.5, // 3
+            // Back
+            -0.5, -0.5, -0.5, // 4
+             0.5, -0.5, -0.5, // 5
+             0.5,  0.5, -0.5, // 6
+            -0.5,  0.5, -0.5, // 7
+        };
+        const indices = [_]u32{
+            // Front
+            0, 1, 2, 0, 2, 3,
+            // Right
+            1, 5, 6, 1, 6, 2,
+            // Back
+            5, 4, 7, 5, 7, 6,
+            // Left
+            4, 0, 3, 4, 3, 7,
+            // Top
+            3, 2, 6, 3, 6, 7,
+            // Bottom
+            4, 5, 1, 4, 1, 0,
+        };
+        return Mesh.init(
+            &vertices,
+            &indices,
+            VertexLayout.Pos()
+        );
+    }
+
+    pub fn createTriangle() !Mesh {
+        // Triangle vertices: 3 points with positions (x,y,z)
+        const vertices = [_]f32{
+             0.0,  0.5, 0.0, // Top
+            -0.5, -0.5, 0.0, // Left
+             0.5, -0.5, 0.0, // Right
+        };
+        const indices = [_]u32{0, 1, 2};
+        return Mesh.init(
+            &vertices,
+            &indices,
+            VertexLayout.Pos()
+        );
+    }
+
     pub fn deinit(self: *Mesh) void {
         self.data.deinit();
     }
