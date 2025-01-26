@@ -1,12 +1,12 @@
 const std = @import("std");
-const zune = @import("zune"); // The Engine
-const c = @import("zune").c;
+const zune = @import("zune"); // The engine
 
 const WINDOW_WIDTH = 1200;
 const WINDOW_HEIGHT = 900;
 
 pub fn main() !void {
 
+    // ==== Initializing Everything ==== \\
     // Initialize allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -46,12 +46,13 @@ pub fn main() !void {
     camera.setPosition(0.0, 0.0, 5.0);
     camera.lookAt(0.0, 0.0, 0.0); // z maybe -1
 
-    renderer.setActiveCamera(&camera); // Set the active camera for the renderer
-
-    // -----------
+    renderer.setActiveCamera(&camera); 
 
     window.centerWindow();
     renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
+
+
+    // ==== Create a mesh ==== \\
 
     // Create a simple triangle mesh
     const vertices = [_]f32{
@@ -59,69 +60,46 @@ pub fn main() !void {
         -0.5, -0.5, 0.0,   0.0, 0.0, // left
         0.5, -0.5, 0.0,   1.0, 0.0, // right
     };
-
-    std.debug.print("Vertices: {any}\n", .{vertices});
-
     const indices = [_]u32{ 0, 1, 2 };
 
-    // Define Vertex Layout
-    const vertex_layout = zune.graphics.VertexLayout{
-        .descriptors = &[_]zune.graphics.VertexAttributeDescriptor{
-            .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
-            .{ .attribute_type = .TexCoord, .data_type = c.GL_FLOAT },
-        },
-    };
+    
+    // Create triangle mesh using vertices and indices
+    var triangle_mesh = try zune.graphics.Mesh.init(&vertices, &indices, zune.graphics.VertexLayout.PosTex());
+    var material = try zune.graphics.Material.init(&renderer.default_shader,.{ 0.8, 0.1, 0.4, 1.0 });
+    defer triangle_mesh.deinit();
 
-    var triangle = try zune.graphics.VertexBuffer.init(
-        &vertices,
-        &indices,
-        vertex_layout, // Pass VertexLayout here
-    );
-    defer triangle.deinit();
-
-    // Create a Material using the default shader
-    //var material = try zune.graphics.Material.init(renderer.default_shader, .{ 1.0, 0.0, 0.0, 1.0 }); // Red color
-    var material = try zune.graphics.Material.init(&renderer.default_shader, .{ 1.0, 0.0, 0.0, 1.0 }); // Red color
-    defer material.deinit();
 
     // Set viewport
     const window_size = window.getSize();
     renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
 
+
     // Simple model matrix (identity)
-    const model = [16]f32{
+    const model_matrix = [16]f32{
         1.0, 0.0, 0.0, 0.0,
         0.0, 1.0, 0.0, 0.0,
         0.0, 0.0, 1.0, 0.0,
         0.0, 0.0, 0.0, 1.0,
     };
+    
 
     while (!window.shouldClose()) {
-        // Update timing
+
+        // ==== Set Time variables ==== \\
+
         time.update();
         input.update();
 
-        // Regular updates (every frame)
-        const dt = time.getDelta();
-        _ = dt; // Update game state with dt...
+        // Get delta time
+        //const dt = time.getDelta();
 
-        // input
+
+        // ==== Process Input ==== \\
+
         if (input.isKeyPressed(zune.core.Input.Key.SPACE)) {
             window.setTitle("wow sick");
             std.debug.print("ye", .{});
         }
-
-        // Clear the screen
-        renderer.clear();
-        zune.err.gl.checkGLError("after clear");
-
-        // --------------------------------------------------------
-
-        // **Simplified drawing using Material and Renderer::draw**
-        try renderer.draw(&triangle, &material, &model); // Pass material and model matrix
-        zune.err.gl.checkGLError("After draw");
-
-        // --------------------------------------------------------
 
         // Fixed updates (at fixed timestep intervals)
         while (time.shouldFixedUpdate()) {
@@ -130,6 +108,22 @@ pub fn main() !void {
             // Update physics with fixed_dt...
         }
 
+
+        // ==== Drawing to the screen ==== \\
+
+        // Clear the window
+        renderer.clear();
+        zune.err.gl.checkGLError("after clear");
+ 
+        // Draw the triangle mesh
+        renderer.drawMesh(&triangle_mesh, &material, &model_matrix) catch |err| {
+            std.debug.print("Error during rendering: {any}\n", .{err});
+        };
+        zune.err.gl.checkGLError("After draw");
+
+
+        // ==== Print Game Info ==== \\
+        
         // Print FPS every second
         if (time.fps.timer >= 1.0) {
             std.debug.print("FPS: {d:.2}\n", .{time.getFPS()});

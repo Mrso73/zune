@@ -29,11 +29,11 @@ pub const Shader = struct {
         const source_len: ?*const c.GLint = @ptrCast(&@as(c.GLint, @intCast(source.len)));
         c.glShaderSource(shader, 1, &source_ptr, source_len);
         c.glCompileShader(shader);
+        err.checkGLError("glCompileShader");
 
         // Check for compilation errors
         var success: c.GLint = undefined;
         c.glGetShaderiv(shader, c.GL_COMPILE_STATUS, &success);
-        std.debug.print("Shader compilation status: {d}\n", .{success}); // Debug print for success
 
         if (success == c.GL_FALSE) {
             var info_log: [512]u8 = undefined;
@@ -59,25 +59,46 @@ pub const Shader = struct {
 
     pub fn create(vertex_source: []const u8, fragment_source: []const u8) !Shader {
         const vertex_shader = try compileShader(vertex_source, c.GL_VERTEX_SHADER);
+        errdefer c.glDeleteShader(vertex_shader);
+        
         const fragment_shader = try compileShader(fragment_source, c.GL_FRAGMENT_SHADER);
+        errdefer c.glDeleteShader(fragment_shader);
 
         const program = c.glCreateProgram();
-        err.checkGLError("glCreateProgram"); // Add error check
+        if (program == 0) {
+            return error.ShaderProgramCreationFailed;
+        }
+        errdefer c.glDeleteProgram(program);
 
         c.glAttachShader(program, vertex_shader);
-        err.checkGLError("glAttachShader (vertex)"); // Add error check
-
         c.glAttachShader(program, fragment_shader);
-        err.checkGLError("glAttachShader (fragment)"); // Add error check
 
         c.glLinkProgram(program);
-        err.checkGLError("glLinkProgram"); // Add error check
 
-        // Clean up
+        var link_status: c.GLint = undefined;
+        c.glGetProgramiv(program, c.GL_LINK_STATUS, &link_status);
+        if (link_status == c.GL_FALSE) {
+            var info_log: [512]u8 = undefined;
+            var length: c.GLsizei = undefined;
+            c.glGetProgramInfoLog(program, 512, &length, &info_log);
+            if (length > 0) {
+                const usize_length: usize = @intCast(length);
+                std.debug.print("[Error] Shader program linking error: {s}\n", .{info_log[0..usize_length]});
+            }
+            return error.ShaderProgramLinkFailed;
+        }
+
+        // Add validation
+        c.glValidateProgram(program);
+        var validate_status: c.GLint = undefined;
+        c.glGetProgramiv(program, c.GL_VALIDATE_STATUS, &validate_status);
+        if (validate_status == c.GL_FALSE) {
+            return error.ShaderProgramValidationFailed;
+        }
+
+        // Clean up shaders
         c.glDeleteShader(vertex_shader);
-        err.checkGLError("glDeleteShader (vertex)"); // Add error check
         c.glDeleteShader(fragment_shader);
-        err.checkGLError("glDeleteShader (fragment)"); // Add error check
 
         return Shader{
             .program = program,

@@ -24,10 +24,10 @@ pub const graphics = struct {
 
     pub const Shader = @import("graphics/shader.zig").Shader;
 
-    pub const VertexBuffer = @import("graphics/vertexBuffer.zig").VertexBuffer;
-    pub const AttributeType = @import("graphics/vertexBuffer.zig").AttributeType;
-    pub const VertexAttributeDescriptor = @import("graphics/vertexBuffer.zig").VertexAttributeDescriptor;
-    pub const VertexLayout = @import("graphics/vertexBuffer.zig").VertexLayout;
+    pub const Mesh = @import("graphics/mesh.zig").Mesh;
+    pub const AttributeType = @import("graphics/mesh.zig").AttributeType;
+    pub const VertexAttributeDescriptor = @import("graphics/mesh.zig").VertexAttributeDescriptor;
+    pub const VertexLayout = @import("graphics/mesh.zig").VertexLayout;
 };
 
 // Math utilities

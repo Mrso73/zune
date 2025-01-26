@@ -144,35 +144,3 @@ fn glfwTimeSource() f64 {
 fn systemTimeSource() f64 {
     return @as(f64, @floatFromInt(std.time.milliTimestamp())) / 1000.0;
 }
-
-/// Example usage:
-pub fn example() void {
-    // Create time system with default config
-    var time = Time.init(.{
-        .target_fps = 60,
-        .fixed_timestep = 1.0 / 60.0,
-    });
-
-    // Game loop
-    while (true) {
-        // Update timing
-        time.update();
-
-        // Regular updates (every frame)
-        const dt = time.getDelta();
-        _ = dt;
-        // Update game state with dt...
-
-        // Fixed updates (at fixed timestep intervals)
-        while (time.shouldFixedUpdate()) {
-            const fixed_dt = time.getFixedTimestep();
-            _ = fixed_dt;
-            // Update physics with fixed_dt...
-        }
-
-        // Print FPS every second
-        if (time.fps.timer >= 1.0) {
-            std.debug.print("FPS: {d:.2}\n", .{time.getFPS()});
-        }
-    }
-}
