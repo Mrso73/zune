@@ -7,35 +7,34 @@ pub const core = struct {
     pub const Window = @import("core/window.zig").Window;
     pub const WindowConfig = @import("core/window.zig").WindowConfig;
 
-    pub const OrthographicCamera = @import("core/camera.zig").OrthographicCamera;
-    pub const PerspectiveCamera = @import("core/camera.zig").PerspectiveCamera;
+    pub const Camera = @import("core/camera.zig").Camera;
     //pub const FirstPersonCamera = @import("core/camera.zig").FirstPersonCamera;
 };
 
 // Graphics functionality
 pub const graphics = struct {
     pub const Material = @import("graphics/material.zig").Material;
-
     pub const Renderer = @import("graphics/renderer.zig").Renderer;
-
     pub const Shader = @import("graphics/shader.zig").Shader;
 
+    pub const Model = @import("graphics/model.zig").Model;
     pub const Mesh = @import("graphics/mesh.zig").Mesh;
     pub const AttributeType = @import("graphics/mesh.zig").AttributeType;
     pub const VertexAttributeDescriptor = @import("graphics/mesh.zig").VertexAttributeDescriptor;
     pub const VertexLayout = @import("graphics/mesh.zig").VertexLayout;
+
+    pub const Transform = @import("math/transform.zig").Transform;
 };
 
 // Math utilities
-pub const math = struct {
-    pub const Math = @import("math/math.zig");
-};
+pub const math = @import("math/math.zig");
 
 // Utilities
 pub const utils = struct {
     pub const Time = @import("utils/time.zig");
 };
 
+// Error handling
 pub const err = struct {
     pub const gl = @import("err/gl.zig");
 };

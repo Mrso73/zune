@@ -5,13 +5,14 @@ const err = @import("../err/gl.zig");
 
 const Shader = @import("shader.zig").Shader;
 const Material = @import("material.zig").Material;
-const PerspectiveCamera = @import("../core/camera.zig").PerspectiveCamera; // TODO: change with "Camera" struct
+const Camera = @import("../core/camera.zig").Camera;
 const Mesh = @import("mesh.zig").Mesh;
+const Model = @import("model.zig").Model;
 
 
 pub const Renderer = struct {
     default_shader: Shader,
-    active_camera: ?*PerspectiveCamera = null,
+    active_camera: ?*Camera = null,
 
 
     pub fn init(allocator: std.mem.Allocator) !Renderer {
@@ -83,7 +84,7 @@ pub const Renderer = struct {
     }
 
 
-    pub fn setActiveCamera(self: *Renderer, camera: *PerspectiveCamera) void {
+    pub fn setActiveCamera(self: *Renderer, camera: *Camera) void {
         self.active_camera = camera;
     }
 
@@ -91,7 +92,7 @@ pub const Renderer = struct {
     // Updated draw function to accept Mesh
     pub fn drawMesh(self: *Renderer, mesh: *Mesh, material: *Material, model_matrix: *const [16]f32) !void {
         if (self.active_camera == null) {
-            std.debug.print("Warning: No active camera set for rendering.\n", .{});
+            std.debug.print("Warning: No active camera set for rendering mesh.\n", .{});
             return;
         }
 
@@ -102,13 +103,13 @@ pub const Renderer = struct {
             try material.shader.setUniformMat4("model", model_matrix);
         }
         if (material.shader.uniform_cache.contains("view")) {
-            try material.shader.setUniformMat4("view", &self.active_camera.?.base.view_matrix);
+            try material.shader.setUniformMat4("view", &self.active_camera.?.view_matrix);
         }
         if (material.shader.uniform_cache.contains("projection")) {
-            try material.shader.setUniformMat4("projection", &self.active_camera.?.base.projection_matrix);
+            try material.shader.setUniformMat4("projection", &self.active_camera.?.projection_matrix);
         }
 
-        mesh.data.bind(); // Bind MeshData
+        mesh.bind(); // Bind MeshData
 
         const current_program_id: c.GLint = undefined;
         c.glGetIntegerv(c.GL_CURRENT_PROGRAM, current_program_id);
@@ -116,6 +117,22 @@ pub const Renderer = struct {
 
         self.useShader(material.shader);
 
-        mesh.data.draw(); // Draw MeshData
+        mesh.draw(); // Draw MeshData
+    }
+
+    pub fn drawModel(self: *Renderer, model: *Model) !void {
+        // First update the model's matrices to ensure transform is current
+        model.transform.updateMatrices();
+
+        // Iterate over each mesh-material pair
+        for (model.meshes, model.materials) |mesh, material| {
+
+            // Draw the mesh using the model's world matrix
+            try self.drawMesh(
+                mesh, 
+                material, 
+                &model.transform.world_matrix
+            );
+        }
     }
 };

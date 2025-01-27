@@ -12,27 +12,23 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-
     //setup time utitilites
     var time = zune.utils.Time.Time.init(.{
         .target_fps = 60,
         .fixed_timestep = 1.0 / 60.0,
     });
 
-
     // TODO: setup input manager
-
 
     // create a window
     const window = try zune.core.Window.init(allocator, .{
         .title = "zune example-1",
         .width = WINDOW_WIDTH,
         .height = WINDOW_HEIGHT,
-        .transparent = false,
-        .decorated = true,
+        .transparent = true,
+        .decorated = false,
     });
     defer window.deinit();
-
 
     // create a renderer
     var renderer = try zune.graphics.Renderer.init(allocator);
@@ -40,47 +36,32 @@ pub fn main() !void {
 
 
     // create a camera
-    var camera = zune.core.PerspectiveCamera.init(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
-    camera.setPosition(0.0, 0.0, 5.0);
-    camera.lookAt(0.0, 0.0, 0.0); // z maybe -1
+    var perspective_camera = zune.core.Camera.initPerspective(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
+    perspective_camera.setPosition(.{0.0, 0.0, -7.0});
+    perspective_camera.lookAt(.{0.0, 0.0, 0.0});
 
-    renderer.setActiveCamera(&camera); 
 
     window.centerWindow();
+    renderer.setActiveCamera(&perspective_camera);
     renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
 
 
-    // ==== Create a mesh ==== \\
+    // ==== Create a mesh and model ==== \\
 
-    // Create a simple triangle mesh
-    const vertices = [_]f32{
-        0.0,  0.5, 0.0,   0.5, 1.0, // top
-        -0.5, -0.5, 0.0,   0.0, 0.0, // left
-        0.5, -0.5, 0.0,   1.0, 0.0, // right
-    };
-    const indices = [_]u32{ 0, 1, 2 };
-
-    
-    // Create triangle mesh using vertices and indices
-    var triangle_mesh = try zune.graphics.Mesh.init(&vertices, &indices, zune.graphics.VertexLayout.PosTex());
     var material = try zune.graphics.Material.init(&renderer.default_shader,.{ 0.8, 0.1, 0.4, 1.0 });
-    defer triangle_mesh.deinit();
+    var cube_mesh = try zune.graphics.Mesh.createCube(); defer cube_mesh.deinit();
 
-
+    var cube = try zune.graphics.Model.initEmpty(allocator, 1, 1);
+    defer cube.deinit();
+    try cube.addMesh(&cube_mesh);
+    try cube.addMaterial(&material);
+    
+    
     // Set viewport
     const window_size = window.getSize();
     renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
 
-
-    // Simple model matrix (identity)
-    const model_matrix = [16]f32{
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    };
-    
-
+    const i: f32 = 0.05;
     while (!window.shouldClose()) {
 
         // ==== Set Time variables ==== \\
@@ -102,15 +83,16 @@ pub fn main() !void {
             // Update physics with fixed_dt...
         }
 
+        //cube.transform.translate(0.0, -i, 0.0);
+        cube.transform.rotate(i, i / 2, 0.0);
 
         // ==== Drawing to the screen ==== \\
 
         // Clear the window
         renderer.clear();
         zune.err.gl.checkGLError("after clear");
- 
-        // Draw the triangle mesh
-        renderer.drawMesh(&triangle_mesh, &material, &model_matrix) catch |err| {
+
+        renderer.drawModel(&cube) catch |err| {
             std.debug.print("Error during rendering: {any}\n", .{err});
         };
         zune.err.gl.checkGLError("After draw");
