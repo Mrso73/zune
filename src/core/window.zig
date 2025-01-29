@@ -19,16 +19,26 @@ pub const WindowConfig = struct {
     floating: bool = false,
 };
 
+// Define reusable types
+pub const CursorPos = struct { x: f64, y: f64 };
+pub const FramebufferSize = struct { width: u32, height: u32 };
+
+pub const CursorMode = enum {
+    normal,
+    hidden,
+    disabled,
+};
+
 pub const Window = struct {
     handle: *c.GLFWwindow,
     allocator: std.mem.Allocator,
     config: WindowConfig,
-    framebuffer_size: struct { width: u32, height: u32 },
+    framebuffer_size: FramebufferSize,
 
     // Window state
     is_minimized: bool,
     is_focused: bool,
-    cursor_pos: struct { x: f64, y: f64 },
+    cursor_pos: CursorPos,
 
     // Errors that can occur during window operations
     pub const Error = error{
@@ -101,6 +111,15 @@ pub const Window = struct {
         // Store self pointer in GLFW user pointer
         c.glfwSetWindowUserPointer(window, self);
 
+        _ = c.glfwSetCursorPosCallback(window, cursorPosCallback);
+    
+        // Get initial cursor position
+        var initial_x: f64 = undefined;
+        var initial_y: f64 = undefined;
+        c.glfwGetCursorPos(window, &initial_x, &initial_y);
+        
+        self.cursor_pos = .{ .x = initial_x, .y = initial_y };
+
         return self;
     }
 
@@ -117,8 +136,17 @@ pub const Window = struct {
         return self.is_focused;
     }
 
-    pub fn getCursorPos(self: *const Window) struct { x: f64, y: f64 } {
-        return self.cursor_pos;
+    // Replace the existing getCursorPos implementation with this one
+    pub fn getCursorPos(self: *const Window) CursorPos {
+        var xpos: f64 = undefined;
+        var ypos: f64 = undefined;
+        c.glfwGetCursorPos(self.handle, &xpos, &ypos);
+        return .{ .x = xpos, .y = ypos };
+    }
+
+    fn cursorPosCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
+        const self = @as(*Window, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
+        self.cursor_pos = .{ .x = xpos, .y = ypos };
     }
 
     pub fn getSize(self: *const Window) struct { width: u32, height: u32 } {
@@ -130,15 +158,22 @@ pub const Window = struct {
             .width = if (width < 0) 0 else @intCast(width),
             .height = if (height < 0) 0 else @intCast(height),
         };
-    }
+    }   
 
     // Window control
-    pub fn setCursorVisible(self: *Window, visible: bool) void {
-        c.glfwSetInputMode(
-            self.handle,
-            c.GLFW_CURSOR,
-            if (visible) c.GLFW_CURSOR_NORMAL else c.GLFW_CURSOR_DISABLED,
-        );
+    pub fn setCursorMode(self: *Window, mode: CursorMode) void {
+        const glfw_mode = switch (mode) {
+            .normal => c.GLFW_CURSOR_NORMAL,
+            .hidden => c.GLFW_CURSOR_HIDDEN,
+            .disabled => c.GLFW_CURSOR_DISABLED,
+        };
+        c.glfwSetInputMode(self.handle, c.GLFW_CURSOR, glfw_mode);
+
+        // Verify the mode was set
+        const current_mode = c.glfwGetInputMode(self.handle, c.GLFW_CURSOR);
+        if (current_mode != glfw_mode) {
+            std.debug.print("Warning: Failed to set cursor mode\n", .{});
+        }
     }
 
     pub fn setMousePos(self: *Window, x: f64, y: f64) void {

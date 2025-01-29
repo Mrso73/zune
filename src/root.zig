@@ -7,6 +7,7 @@ pub const core = struct {
     pub const Window = @import("core/window.zig").Window;
     pub const WindowConfig = @import("core/window.zig").WindowConfig;
 
+    pub const CameraMouseController = @import("core/camera.zig").CameraMouseController;
     pub const Camera = @import("core/camera.zig").Camera;
     //pub const FirstPersonCamera = @import("core/camera.zig").FirstPersonCamera;
 };

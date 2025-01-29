@@ -10,8 +10,8 @@ pub const Mat4 = [16]f32;
 // ==== CAMERA FUNTIONS ==== \\
 
 pub fn lookAt(eye: Vec3, target: Vec3, up: Vec3) Mat4 {
-    const z = normalize(sub(eye, target));
-    const x = normalize(cross(up, z));
+    const z = normalizeVec3(subtractVec3(eye, target));
+    const x = normalizeVec3(cross(up, z));
     const y = cross(z, x);
 
     return .{
@@ -53,25 +53,29 @@ pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) 
 
 // ==== VECOTR OPPERATIONS ==== \\
 
-pub fn normalize(v: Vec3) Vec3 {
+pub fn normalizeVec3(v: Vec3) Vec3 {
     const len = @sqrt(dot(v, v));
-    return .{v[0]/len, v[1]/len, v[2]/len};
+    return .{ v[0] / len, v[1] / len, v[2] / len };
 }
 
-pub fn sub(a: Vec3, b: Vec3) Vec3 {
-    return .{a[0]-b[0], a[1]-b[1], a[2]-b[2]};
+pub fn addVec3(a: Vec3, b: Vec3) Vec3 {
+    return .{ a[0] + b[0], a[1] + b[1], a[2] + b[2] };
+}
+
+pub fn subtractVec3(a: Vec3, b: Vec3) Vec3 {
+    return .{ a[0] - b[0], a[1] - b[1], a[2] - b[2] };
 }
 
 pub fn cross(a: Vec3, b: Vec3) Vec3 {
     return .{
-        a[1]*b[2] - a[2]*b[1],
-        a[2]*b[0] - a[0]*b[2],
-        a[0]*b[1] - a[1]*b[0],
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
     };
 }
 
 pub fn dot(a: Vec3, b: Vec3) f32 {
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
 pub fn multiplyMatrices(a: [16]f32, b: [16]f32) [16]f32 {
