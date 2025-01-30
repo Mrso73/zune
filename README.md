@@ -12,6 +12,10 @@ It will be relatively high-level while still being able to access low-level comp
 ## Short-term Roadmap
 
 - [x] Create a simple mesh rendering system.
-- [ ] Add basic mesh shapes.
+- [x] Create a higher level camera struct.
 - [ ] Make the input system function correctly.
-- [ ] Create a higher level camera struct.
+- [ ] Add a lighting system
+- [ ] Add primitive mesh shapes.
+- [ ] Add texturing.
+- [ ] Create better examples.
+
