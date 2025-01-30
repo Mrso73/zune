@@ -15,7 +15,7 @@ pub fn main() !void {
 
     //setup time utitilites
     var time = zune.utils.Time.Time.init(.{
-        .target_fps = 60,
+        .target_fps = 120,
         .fixed_timestep = 1.0 / 60.0,
     });
 
@@ -90,11 +90,11 @@ pub fn main() !void {
         time.update();
 
         // Get delta time
-        //const dt = time.getDelta();
+        const dt = time.getDelta();
 
 
         // ==== Process Input ==== \\        
-        camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)));
+        camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), dt);
 
 
         // ==== Update Program ==== \\
