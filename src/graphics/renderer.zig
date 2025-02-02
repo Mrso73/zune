@@ -5,7 +5,7 @@ const err = @import("../err/gl.zig");
 
 const Shader = @import("shader.zig").Shader;
 const Material = @import("material.zig").Material;
-const Camera = @import("../core/camera.zig").Camera;
+const Camera = @import("../scene/camera.zig").Camera;
 const Mesh = @import("mesh.zig").Mesh;
 const Model = @import("model.zig").Model;
 
@@ -62,18 +62,21 @@ pub const Renderer = struct {
     pub fn clear(self: *Renderer) void {
         _ = self;
         c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
+        err.checkGLError("glClear");
     }
 
 
     pub fn setClearColor(self: *Renderer, color: [4]f32) void {
         _ = self;
         c.glClearColor(color[0], color[1], color[2], color[3]);
+        err.checkGLError("glClearColor");
     }
 
 
     pub fn setViewport(self: *Renderer, x: i32, y: i32, width: i32, height: i32) void {
         _ = self;
         c.glViewport(x, y, width, height);
+        err.checkGLError("glViewport");
     }
 
 
@@ -103,13 +106,13 @@ pub const Renderer = struct {
             try material.shader.setUniformMat4("model", model_matrix);
         }
         if (material.shader.uniform_cache.contains("view")) {
-            try material.shader.setUniformMat4("view", &self.active_camera.?.view_matrix);
+            try material.shader.setUniformMat4("view", &self.active_camera.?.view_matrix.data);
         }
         if (material.shader.uniform_cache.contains("projection")) {
-            try material.shader.setUniformMat4("projection", &self.active_camera.?.projection_matrix);
+            try material.shader.setUniformMat4("projection", &self.active_camera.?.projection_matrix.data);
         }
 
-        mesh.bind(); // Bind MeshData
+        mesh.bind(); // Bind Mesh
 
         const current_program_id: c.GLint = undefined;
         c.glGetIntegerv(c.GL_CURRENT_PROGRAM, current_program_id);
@@ -117,7 +120,7 @@ pub const Renderer = struct {
 
         self.useShader(material.shader);
 
-        mesh.draw(); // Draw MeshData
+        mesh.draw(); // Draw Mesh
     }
 
     pub fn drawModel(self: *Renderer, model: *Model) !void {

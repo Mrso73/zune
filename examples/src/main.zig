@@ -15,7 +15,7 @@ pub fn main() !void {
 
 
     //setup time utitilites
-    var time = zune.utils.Time.Time.init(.{
+    var time = zune.core.Time.Time.init(.{
         .target_fps = 120,
         .fixed_timestep = 1.0 / 60.0,
     });
@@ -47,13 +47,13 @@ pub fn main() !void {
 
 
     // create a camera
-    var perspective_camera = zune.core.Camera.initPerspective(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
-    perspective_camera.setPosition(.{0.0, 0.0, 7.0});
-    perspective_camera.lookAt(.{0.0, 0.0, 0.0});
+    var perspective_camera = zune.scene.Camera.initPerspective(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
+    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 10.0});
+    perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
 
     const initial_mouse_pos = input.getMousePosition();
-    var camera_controller = zune.core.CameraMouseController.init(&perspective_camera,
+    var camera_controller = zune.scene.CameraMouseController.init(&perspective_camera,
     @as(f32, @floatCast(initial_mouse_pos.x)), @as(f32, @floatCast(initial_mouse_pos.y)));
     
 
@@ -97,18 +97,12 @@ pub fn main() !void {
 
 
 
-
-
-
         // ==== Update Variables ==== \\  
         time.update();
         try input.update();
 
         // Get delta time
         const dt = time.getDelta();
-
-
-
 
 
 
@@ -125,9 +119,6 @@ pub fn main() !void {
 
 
 
-
-
-
         // ==== Update Program ==== \\
         // Fixed updates (at fixed timestep intervals)
         while (time.shouldFixedUpdate()) {
@@ -137,9 +128,6 @@ pub fn main() !void {
         }
 
         cube_model_1.transform.rotate(i, i / 2, 0.0);
-
-
-
 
 
 

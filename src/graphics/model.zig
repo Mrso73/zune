@@ -1,10 +1,9 @@
 // graphics/model.zig
 
 const std = @import("std");
-const math = @import("../math/math.zig");
 const Mesh = @import("mesh.zig").Mesh;
 const Material = @import("material.zig").Material;
-const Transform = @import("../math/transform.zig").Transform;
+const Transform = @import("../scene/transform.zig").Transform;
 
 pub const ModelError = error{
     OutOfSpace,

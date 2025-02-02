@@ -1,17 +1,20 @@
 // camera.zig
 const std = @import("std");
-const math = @import("../math/math.zig");
 const c = @import("../c.zig");
+
+const math = @import("../math/common.zig");
+const Vec3 = @import("../math/vector.zig").Vec3;
+const Mat4 = @import("../math/matrix.zig").Mat4;
 
 /// Camera implementation supporting both perspective and orthographic projections.
 /// Handles view and projection matrix calculations for 3D rendering.
 pub const Camera = struct {
-    position: math.Vec3 = .{ 0.0, 0.0, 0.0 },
-    target: math.Vec3 = .{ 0.0, 0.0, -1.0 },
-    up: math.Vec3 = .{ 0.0, 1.0, 0.0 },
+    position: Vec3 = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
+    target: Vec3 = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
+    up: Vec3 = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
 
-    view_matrix: math.Mat4 = math.identity_mat4,
-    projection_matrix: math.Mat4 = math.identity_mat4,
+    view_matrix: Mat4 = Mat4.identity(),
+    projection_matrix: Mat4 = Mat4.identity(),
 
     near: f32,
     far: f32,
@@ -72,7 +75,7 @@ pub const Camera = struct {
     pub fn updateProjection(self: *Camera) void {
         switch (self.camera_type) {
             .perspective => |*persp| {
-                self.projection_matrix = math.perspective(
+                self.projection_matrix = Mat4.perspective(
                     persp.fov,
                     persp.aspect,
                     self.near,
@@ -80,7 +83,7 @@ pub const Camera = struct {
                 );
             },
             .orthographic => |*ortho| {
-                self.projection_matrix = math.ortho(
+                self.projection_matrix = Mat4.ortho(
                     ortho.left,
                     ortho.right,
                     ortho.bottom,
@@ -94,14 +97,14 @@ pub const Camera = struct {
     
 
     /// Set the camera position and update the view matrix
-    pub fn setPosition(self: *Camera, position: math.Vec3) void {
+    pub fn setPosition(self: *Camera, position: Vec3) void {
         self.position = position;
         self.updateViewMatrix();
     }
 
 
     /// Set the camera target and update the view matrix
-    pub fn lookAt(self: *Camera, target: math.Vec3) void {
+    pub fn lookAt(self: *Camera, target: Vec3) void {
         self.target = target;
         self.updateViewMatrix();
     }
@@ -109,7 +112,7 @@ pub const Camera = struct {
 
     /// Update the view matrix based on current camera parameters
     pub fn updateViewMatrix(self: *Camera) void {
-        self.view_matrix = math.lookAt(
+        self.view_matrix = Mat4.lookAt(
             self.position,
             self.target,
             self.up,
@@ -118,7 +121,7 @@ pub const Camera = struct {
 
 
     /// Get the combined view-projection matrix
-    pub fn getViewProjectionMatrix(self: *Camera) math.Mat4 {
+    pub fn getViewProjectionMatrix(self: *Camera) Mat4 {
         return math.multiplyMatrices(self.projection_matrix, self.view_matrix);
     }
 
@@ -210,13 +213,13 @@ pub const CameraMouseController = struct {
         self.pitch = std.math.clamp(self.pitch + y_offset, -89.0, 89.0);
 
         // Calculate new camera direction
-        const direction: math.Vec3 = .{
-            @cos(std.math.degreesToRadians(self.yaw)) * @cos(std.math.degreesToRadians(self.pitch)),
-            @sin(std.math.degreesToRadians(self.pitch)),
-            @sin(std.math.degreesToRadians(self.yaw)) * @cos(std.math.degreesToRadians(self.pitch)),
+        const direction: Vec3 = .{
+            .x = @cos(std.math.degreesToRadians(self.yaw)) * @cos(std.math.degreesToRadians(self.pitch)),
+            .y = @sin(std.math.degreesToRadians(self.pitch)),
+            .z = @sin(std.math.degreesToRadians(self.yaw)) * @cos(std.math.degreesToRadians(self.pitch)),
         };
 
-        self.camera.target = math.addVec3(self.camera.position, math.normalizeVec3(direction));
+        self.camera.target = Vec3.add(self.camera.position, Vec3.normalize(direction));
         self.camera.updateViewMatrix();
     }
 
