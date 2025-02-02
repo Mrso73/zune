@@ -7,9 +7,10 @@ pub const core = struct {
     pub const Window = @import("core/window.zig").Window;
     pub const WindowConfig = @import("core/window.zig").WindowConfig;
 
+    pub const Input = @import("core/input.zig").Input;
+
     pub const CameraMouseController = @import("core/camera.zig").CameraMouseController;
     pub const Camera = @import("core/camera.zig").Camera;
-    //pub const FirstPersonCamera = @import("core/camera.zig").FirstPersonCamera;
 };
 
 // Graphics functionality
@@ -28,7 +29,20 @@ pub const graphics = struct {
 };
 
 // Math utilities
-pub const math = @import("math/math.zig");
+pub const math = struct {
+    pub usingnamespace @import("math/math.zig");
+
+    const Vec2 = @import("math/math.zig").Vec2;
+    const Vec3 = @import("math/math.zig").Vec3;
+    const Vec4 = @import("math/math.zig").Vec4;
+    const Mat4 = @import("math/math.zig").Mat4;
+
+    pub const constants = struct {
+        pub const PI: f32 = 3.14159265359;
+        pub const TAU: f32 = PI * 2.0;
+        pub const EPSILON: f32 = 1e-6;
+    };
+};
 
 // Utilities
 pub const utils = struct {
