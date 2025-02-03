@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    // Set target and optimization
     const target = b.standardTargetOptions(.{ .default_target = .{
         .cpu_arch = .x86_64,
         .os_tag = .windows,
@@ -8,6 +9,7 @@ pub fn build(b: *std.Build) void {
     } });
     const optimize = b.standardOptimizeOption(.{});
 
+    // Create the zune module that will be shared across all examples
     const libzune = b.addModule("zune", .{
         .root_source_file = b.path("src/root.zig"),
         .optimize = optimize,
@@ -17,38 +19,44 @@ pub fn build(b: *std.Build) void {
     libzune.addObjectFile(b.path("dependencies/lib/libglfw3.a"));
     libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/glad.c") });
 
-    const exe = b.addExecutable(.{
-        .name = "example-01",
-        .root_source_file = b.path("examples/src/main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    exe.root_module.addImport("zune", libzune);
+    // Define the examples
+    const examples = .{
+        "window-setup",
+        "entity-creation",
+    };
 
-    exe.linkLibC();
+    // create example executable
+    inline for (examples) |example_name| {
+        const exe = b.addExecutable(.{
+            .name = example_name,
+            .root_source_file = b.path("examples/" ++ example_name ++ "/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        exe.root_module.addImport("zune", libzune);
 
-    // Windows-specific libraries
-    exe.linkSystemLibrary("gdi32");
-    exe.linkSystemLibrary("user32");
-    exe.linkSystemLibrary("kernel32");
-    exe.linkSystemLibrary("opengl32");
+        exe.linkLibC();
 
-    b.installArtifact(exe);
+        // Windows-specific libraries
+        exe.linkSystemLibrary("gdi32");
+        exe.linkSystemLibrary("user32");
+        exe.linkSystemLibrary("kernel32");
+        exe.linkSystemLibrary("opengl32");
 
-    // -----------------------------
+        // Create install step
+        const install_step = b.addInstallArtifact(exe, .{});
+        const install_example = b.step("install-" ++ example_name, "Install the " ++ example_name ++ " example");
+        install_example.dependOn(&install_step.step);
 
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
+        // Create run step
+        const run_cmd = b.addRunArtifact(exe);
+        if (b.args) |args| {
+            run_cmd.addArgs(args);
+        }
 
-    // This allows the user to pass arguments to the application in the build
-    // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
+        // Create a specialized run step for this example
+        const run_step = b.step("run-" ++ example_name, "Run the " ++ example_name ++ " example");
+        run_step.dependOn(&install_step.step);
+        run_step.dependOn(&run_cmd.step);
     }
-
-    // This creates a build step. It will be visible in the `zig build --help` menu,
-    // and can be selected like this: `zig build run`
-    // This will evaluate the `run` step rather than the default, which is "install".
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
 }
