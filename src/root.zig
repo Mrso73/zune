@@ -2,6 +2,10 @@
 const std = @import("std");
 pub const c = @import("c.zig");
 
+pub const config = struct {
+    
+};
+
 
 // Core functionality
 pub const core = struct {
@@ -10,7 +14,7 @@ pub const core = struct {
 
     pub const Time = @import("core/time.zig");
     pub const Input = @import("core/input.zig").Input;
-    pub const Config = @import("core/config.zig");
+    
 };
 
 
@@ -34,7 +38,9 @@ pub const scene = struct {
     pub const CameraMouseController = @import("scene/camera.zig").CameraMouseController;
     pub const Camera = @import("scene/camera.zig").Camera;
 
-    pub const Transform = @import("scene/transform.zig").Transform;
+    pub const ecs = @import("scene/ecs.zig");
+
+    pub const Transform = @import("scene/components/transform.zig").Transform;
 };
 
 

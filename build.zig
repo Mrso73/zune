@@ -23,6 +23,7 @@ pub fn build(b: *std.Build) void {
     const examples = .{
         "window-setup",
         "entity-creation",
+        "camera-controller",
     };
 
     // create example executable
