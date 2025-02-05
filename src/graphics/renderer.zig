@@ -3,9 +3,11 @@ const std = @import("std");
 const c = @import("../c.zig");
 const err = @import("../err/gl.zig");
 
+const Camera = @import("camera.zig").Camera;
+
 const Shader = @import("shader.zig").Shader;
 const Material = @import("material.zig").Material;
-const Camera = @import("../scene/camera.zig").Camera;
+
 const Mesh = @import("mesh.zig").Mesh;
 const Model = @import("model.zig").Model;
 
@@ -123,9 +125,7 @@ pub const Renderer = struct {
         mesh.draw(); // Draw Mesh
     }
 
-    pub fn drawModel(self: *Renderer, model: *Model) !void {
-        // First update the model's matrices to ensure transform is current
-        model.transform.updateMatrices();
+    pub fn drawModel(self: *Renderer, model: *Model, transform_matrix: *const [16]f32) !void {
 
         // Iterate over each mesh-material pair
         for (model.meshes, model.materials) |mesh, material| {
@@ -134,7 +134,7 @@ pub const Renderer = struct {
             try self.drawMesh(
                 mesh, 
                 material, 
-                &model.transform.world_matrix
+                transform_matrix,
             );
         }
     }
