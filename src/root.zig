@@ -48,7 +48,6 @@ pub const ecs = struct {
         pub const ModelComponent = @import("ecs/components/modelComponent.zig").ModelComponent;
     };
 
-
     pub const systems = struct {
         usingnamespace @import("ecs/systems//renderSystem.zig");
     };
