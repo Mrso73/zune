@@ -17,32 +17,38 @@ pub const Mat4 = struct {
         };
     }
 
-    pub fn multiply(self: Self, other: Self) Self {
-        var result: Self = undefined;
+    pub fn multiply(self: Mat4, other: Mat4) Mat4 {
+    var result: Mat4 = undefined;
+    for (0..4) |col| {
         for (0..4) |row| {
-            for (0..4) |col| {
-                var sum: f32 = 0.0;
-                for (0..4) |i| {
-                    sum += self.data[row * 4 + i] * other.data[i * 4 + col];
-                }
-                result.data[row * 4 + col] = sum;
+            var sum: f32 = 0.0;
+            for (0..4) | k | {
+                // self[i + k*4] corresponds to self[row][k]
+                // other[k + col*4] corresponds to other[k][col]
+                sum += self.data[row + k * 4] * other.data[k + col * 4];
             }
+            result.data[row + col * 4] = sum;
         }
-        return result;
     }
+    return result;
+}
 
-    // Camera functions
-    pub fn lookAt(eye: Vec3, target: Vec3, up: Vec3) Self {
-        const z = eye.subtract(target).normalize();
-        const x = up.cross(z).normalize();
-        const y = z.cross(x);
+    /// Creates a view matrix using a standard look-at formulation.
+    pub fn lookAt(eye: Vec3, target: Vec3, up: Vec3) Mat4 {
+        // Compute forward vector (from eye to target)
+        const f = Vec3.normalize(Vec3.subtract(target, eye));
+        // Compute right vector
+        const s = Vec3.normalize(Vec3.cross(f, up));
+        // Compute new up vector
+        const u = Vec3.cross(s, f);
 
-        return .{
+        // Return in column-major order (OpenGL convention)
+        return Mat4{
             .data = .{
-                x.x,  x.y,  x.z,  0,
-                y.x,  y.y,  y.z,  0,
-                z.x,  z.y,  z.z,  0,
-                -x.dot(eye), -y.dot(eye), -z.dot(eye), 1,
+                s.x,       u.x,        -f.x,      0,
+                s.y,       u.y,        -f.y,      0,
+                s.z,       u.z,        -f.z,      0,
+                -s.dot(eye), -u.dot(eye), f.dot(eye), 1,
             },
         };
     }

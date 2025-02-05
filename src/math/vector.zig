@@ -93,4 +93,13 @@ pub const Vec3 = struct {
     pub fn lengthSquared(self: Self) f32 {
         return self.x * self.x + self.y * self.y + self.z * self.z;
     }
+
+    // Add this new function
+    pub fn scale(self: Self, scalar: f32) Self {
+        return .{
+            .x = self.x * scalar,
+            .y = self.y * scalar,
+            .z = self.z * scalar,
+        };
+    }
 };
