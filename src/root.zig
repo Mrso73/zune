@@ -20,6 +20,9 @@ pub const core = struct {
 
 // Graphics functionality
 pub const graphics = struct {
+    pub const CameraMouseController = @import("graphics/camera.zig").CameraMouseController;
+    pub const Camera = @import("graphics/camera.zig").Camera;
+
     pub const Renderer = @import("graphics/renderer.zig").Renderer;
     pub const Material = @import("graphics/material.zig").Material;
     pub const Shader = @import("graphics/shader.zig").Shader;
@@ -34,13 +37,21 @@ pub const graphics = struct {
 
 
 // Scene
-pub const scene = struct {
-    pub const CameraMouseController = @import("scene/camera.zig").CameraMouseController;
-    pub const Camera = @import("scene/camera.zig").Camera;
+pub const ecs = struct {
+    pub const EntityID = @import("ecs/ecs.zig").EntityId;
+    pub const ComponentStorage = @import("ecs/ecs.zig").ComponentStorage;
+    pub const Query = @import("ecs/ecs.zig").Query;
+    pub const Registry = @import("ecs/ecs.zig").Registry;
 
-    pub const ecs = @import("scene/ecs.zig");
+    pub const components = struct {
+        pub const TransformComponent = @import("ecs/components/transformComponent.zig").TransformComponent;
+        pub const ModelComponent = @import("ecs/components/modelComponent.zig").ModelComponent;
+    };
 
-    pub const Transform = @import("scene/components/transform.zig").Transform;
+
+    pub const systems = struct {
+        usingnamespace @import("ecs/systems//renderSystem.zig");
+    };
 };
 
 

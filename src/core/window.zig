@@ -38,7 +38,7 @@ pub const Window = struct {
     is_minimized: bool,
     is_focused: bool,
 
-    // Errors that can occur during window operations
+    // TODO: move error system to err module
     pub const Error = error{
         GLFWInitFailed,
         WindowCreationFailed,

@@ -3,8 +3,8 @@
 const std = @import("std");
 const Mesh = @import("mesh.zig").Mesh;
 const Material = @import("material.zig").Material;
-const Transform = @import("../scene/transform.zig").Transform;
 
+// TODO: move error system to err module
 pub const ModelError = error{
     OutOfSpace,
     InvalidIndex,
@@ -17,7 +17,6 @@ pub const Model = struct {
     materials: []*Material,
     mesh_count: usize,
     material_count: usize,
-    transform: Transform,
     allocator: std.mem.Allocator,
     
 
@@ -28,7 +27,6 @@ pub const Model = struct {
         return Model{
             .meshes = try allocator.alloc(*Mesh, mesh_capacity),
             .materials = try allocator.alloc(*Material, material_capacity),
-            .transform = Transform.identity(),
             .mesh_count = 0,
             .material_count = 0,
             .allocator = allocator,
@@ -111,10 +109,6 @@ pub const Model = struct {
             self.material_count -= 1;
         }
     }
-
-
-    // ==== MATRIX STUFF ==== \\W
-
 
     // ==== UTILITY FUNCTIONS ==== \\
 
