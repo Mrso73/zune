@@ -4,8 +4,10 @@ const zune = @import("zune");
 const WINDOW_WIDTH = 1200;
 const WINDOW_HEIGHT = 900;
 
-// --- Main Program --- //
 pub fn main() !void {
+
+    // --- Initialize Everything --- //
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
@@ -34,7 +36,7 @@ pub fn main() !void {
 
 
 
-
+    // --- Set Variables --- //
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
@@ -55,15 +57,20 @@ pub fn main() !void {
 
     // --- Create the model --- //
     
-    var material = try zune.graphics.Material.init(&renderer.default_shader,.{ 0.8, 0.1, 0.4, 1.0 });
-    var cube_mesh = try zune.graphics.Mesh.createCube();
+    var texture = try zune.graphics.Texture.createFromFile(allocator, "examples/entity-creation/txtr.png");
+    defer texture.release();
 
-    var cube_model = try zune.graphics.Model.initEmpty(allocator, 1, 1);
+    var material = try renderer.createTexturedMaterial(.{ 1.0, 1.0, 1.0, 1.0 }, texture);
+    defer material.deinit();
+
+    var cube_mesh = try zune.graphics.Mesh.createCube();
+    defer cube_mesh.deinit();
+
+    var cube_model = try zune.graphics.Model.init(allocator, false);
     defer cube_model.deinit();
 
     try cube_model.addMesh(&cube_mesh);
     try cube_model.addMaterial(&material);
-
 
 
 
@@ -77,18 +84,9 @@ pub fn main() !void {
     try registry.registerComponent(Lifetime);
 
 
-
-    // Create some particles
+    // Create random generater
     var prng = std.rand.DefaultPrng.init(0);
     var random = prng.random();
-
-
-    // Spawn 100 particles
-
-    // Create entities and assign components
-    //const entity1 = try registry.createEntity();
-    //try registry.addComponent(entity1, zune.ecs.components.TransformComponent.identity());
-    //try registry.addComponent(entity1, zune.ecs.components.ModelComponent.init(&cube_model));
 
 
     // Spawn 100 particle entities
@@ -108,13 +106,13 @@ pub fn main() !void {
 
         // Random velocity
         try registry.addComponent(entity, Velocity{
-            .x = (random.float(f32) - 0.5) * 0.5,
-            .y = (random.float(f32) - 0.5) * 0.5,
+            .x = (random.float(f32) - 0.5) * 0.2,
+            .y = (random.float(f32) - 0.5) * 0.2,
         });
         
         // Random lifetime
         try registry.addComponent(entity, Lifetime{
-            .remaining = random.float(f32) * 100.0,
+            .remaining = random.float(f32) * 10.0,
         });
 
         // Set Model to render
@@ -127,7 +125,6 @@ pub fn main() !void {
     
     while (!window.shouldClose()) {
         try input.update();
-
 
         // ==== Process Input ==== \\     
         const mouse_pos = input.getMousePosition();   
