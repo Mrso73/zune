@@ -16,8 +16,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
     libzune.addIncludePath(b.path("dependencies/include/"));
+    
     libzune.addObjectFile(b.path("dependencies/lib/libglfw3.a"));
     libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/glad.c") });
+    libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/stb_image.c") });
 
     // Define the examples
     const examples = .{
