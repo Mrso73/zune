@@ -112,11 +112,11 @@ pub const Shader = struct {
     }
 
     pub fn cacheUniforms(self: *Shader, names: []const []const u8) !void {
-    for (names) |name| {
-        const t: UniformType = if (std.mem.eql(u8, name, "texSampler")) .Texture2D else .Mat4;
-        try self.cacheUniform(name, t);
+        for (names) |name| {
+            const t: UniformType = if (std.mem.eql(u8, name, "texSampler")) .Texture2D else .Mat4;
+            try self.cacheUniform(name, t);
+        }
     }
-}
 
     /// Sets an integer uniform (for sampler uniforms, etc.)
     pub fn setUniformInt(self: *Shader, name: []const u8, value: i32) !void {

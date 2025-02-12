@@ -157,26 +157,33 @@ pub const Mesh = struct {
 
 pub const VertexLayout = struct {
     descriptors: []const VertexAttributeDescriptor,
-    stride: usize, // Add stride to VertexLayout
+    stride: usize,
+
+    pub fn init(descriptors: []const VertexAttributeDescriptor) VertexLayout {
+        var stride: usize = 0;
+        for (descriptors) |desc| {
+            stride += switch (desc.attribute_type) {
+                .Position => 3 * @sizeOf(f32),
+                .TexCoord => 2 * @sizeOf(f32),
+            };
+        }
+        return .{ .descriptors = descriptors, .stride = stride };
+    }
 
     pub fn PosTex() VertexLayout {
-        return VertexLayout {
-            .descriptors = &[_]VertexAttributeDescriptor{
-                VertexAttributeDescriptor{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
-                VertexAttributeDescriptor{ .attribute_type = .TexCoord, .data_type = c.GL_FLOAT },
-            },
-            .stride = 5 * @sizeOf(f32), // Assuming Position (3 floats) + TexCoord (2 floats)
-        };
+        return VertexLayout.init(&[_]VertexAttributeDescriptor{
+            .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
+            .{ .attribute_type = .TexCoord, .data_type = c.GL_FLOAT },
+        });
     }
 
     pub fn Pos() VertexLayout {
-        return VertexLayout {
-            .descriptors = &[_]VertexAttributeDescriptor{
-                VertexAttributeDescriptor{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
-            },
-            .stride = 3 * @sizeOf(f32), // Assuming Position (3 floats)
-        };
+        return VertexLayout.init(&[_]VertexAttributeDescriptor{
+            .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
+        });
     }
+
+    
 };
 
 pub const VertexAttributeDescriptor = struct {
