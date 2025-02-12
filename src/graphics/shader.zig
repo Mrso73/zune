@@ -13,6 +13,7 @@ pub const Shader = struct {
     pub const UniformType = enum {
         Mat4,
         Vec4,
+        Texture2D,
     };
 
     pub const UniformInfo = struct {
@@ -96,9 +97,7 @@ pub const Shader = struct {
             return error.ShaderProgramValidationFailed;
         }
 
-        // Clean up shaders
-        c.glDeleteShader(vertex_shader);
-        c.glDeleteShader(fragment_shader);
+        // Clean handled by errdefer
 
         return Shader{
             .program = program,
@@ -110,6 +109,20 @@ pub const Shader = struct {
         c.glDeleteProgram(self.program);
         err.checkGLError("glDeleteProgram"); // Add error check
         self.uniform_cache.deinit();
+    }
+
+    pub fn cacheUniforms(self: *Shader, names: []const []const u8) !void {
+    for (names) |name| {
+        const t: UniformType = if (std.mem.eql(u8, name, "texSampler")) .Texture2D else .Mat4;
+        try self.cacheUniform(name, t);
+    }
+}
+
+    /// Sets an integer uniform (for sampler uniforms, etc.)
+    pub fn setUniformInt(self: *Shader, name: []const u8, value: i32) !void {
+        const uniform = self.uniform_cache.get(name) orelse return error.UniformNotFound;
+        c.glUniform1i(uniform.location, value);
+        err.checkGLError("glUniform1i");
     }
 
     pub fn cacheUniform(self: *Shader, name: []const u8, uniform_type: UniformType) !void {

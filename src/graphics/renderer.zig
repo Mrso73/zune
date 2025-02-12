@@ -11,9 +11,12 @@ const Material = @import("material.zig").Material;
 const Mesh = @import("mesh.zig").Mesh;
 const Model = @import("model.zig").Model;
 
+const Texture = @import("texture.zig").Texture;
+
 
 pub const Renderer = struct {
-    default_shader: Shader,
+    color_shader: Shader,
+    textured_shader: Shader,
     active_camera: ?*Camera = null,
 
 
@@ -23,41 +26,71 @@ pub const Renderer = struct {
         c.glEnable(c.GL_DEPTH_TEST);
 
 
-        // Create default shader
-         var shader = try Shader.create(
+        // Color Shader (no texture)
+        const color_vert = 
             \\#version 330 core
-            \\layout (location = 0) in vec3 aPos;
+            \\layout (location=0) in vec3 aPos;
             \\uniform mat4 model;
             \\uniform mat4 view;
             \\uniform mat4 projection;
             \\void main() {
             \\    gl_Position = projection * view * model * vec4(aPos, 1.0);
             \\}
-        ,
+        ;
+        const color_frag = 
             \\#version 330 core
-            \\uniform vec4 color;
             \\out vec4 FragColor;
+            \\uniform vec4 color;
+            \\void main() { FragColor = color; }
+        ;
+        var color_shader = try Shader.create(color_vert, color_frag);
+        try color_shader.cacheUniforms(&.{ "model", "view", "projection", "color" });
+
+        // Textured Shader
+        const tex_vert = 
+            \\#version 330 core
+            \\layout (location=0) in vec3 aPos;
+            \\layout (location=1) in vec2 aTexCoord;
+            \\out vec2 TexCoord;
+            \\uniform mat4 model; uniform mat4 view; uniform mat4 projection;
             \\void main() {
-            \\    FragColor = color;
+            \\    gl_Position = projection * view * model * vec4(aPos, 1.0);
+            \\    TexCoord = aTexCoord;
             \\}
-        );
-
-
-        try shader.cacheUniform("model", .Mat4);
-        try shader.cacheUniform("view", .Mat4);
-        try shader.cacheUniform("projection", .Mat4);
-        try shader.cacheUniform("color", .Vec4);
-
+        ;
+        const tex_frag = 
+            \\#version 330 core
+            \\in vec2 TexCoord;
+            \\out vec4 FragColor;
+            \\uniform vec4 color;
+            \\uniform sampler2D texSampler;
+            \\void main() {
+            \\    FragColor = texture(texSampler, TexCoord) * color;
+            \\}
+        ;
+        var textured_shader = try Shader.create(tex_vert, tex_frag);
+        try textured_shader.cacheUniforms(&.{ "model", "view", "projection", "color", "texSampler" });
 
         return Renderer{
-            .default_shader = shader,
+            .color_shader = color_shader,
+            .textured_shader = textured_shader,
             .active_camera = null,
         };
     }
 
 
     pub fn deinit(self: *Renderer) void {
-        self.default_shader.deinit();
+        self.color_shader.deinit();
+        self.textured_shader.deinit();
+    }
+
+
+    pub fn createColorMaterial(self: *Renderer, color: [4]f32) !Material {
+        return Material.init(&self.color_shader, color, null);
+    }
+
+    pub fn createTexturedMaterial(self: *Renderer, color: [4]f32, texture: *Texture) !Material {
+        return Material.init(&self.textured_shader, color, texture);
     }
 
 
@@ -101,9 +134,8 @@ pub const Renderer = struct {
             return;
         }
 
-        try material.use(self, model_matrix);
+        try material.use(self);
 
-        // Now Renderer sets the MVP uniforms
         if (material.shader.uniform_cache.contains("model")) {
             try material.shader.setUniformMat4("model", model_matrix);
         }
@@ -116,19 +148,19 @@ pub const Renderer = struct {
 
         mesh.bind(); // Bind Mesh
 
-        const current_program_id: c.GLint = undefined;
-        c.glGetIntegerv(c.GL_CURRENT_PROGRAM, current_program_id);
+        // (Optional) If you need to retrieve the current program, do it correctly:
+        var current_program_id: c.GLint = 0;
+        c.glGetIntegerv(c.GL_CURRENT_PROGRAM, &current_program_id);
         err.checkGLError("glGetIntegerv");
 
         self.useShader(material.shader);
-
         mesh.draw(); // Draw Mesh
     }
 
     pub fn drawModel(self: *Renderer, model: *Model, transform_matrix: *const [16]f32) !void {
 
         // Iterate over each mesh-material pair
-        for (model.meshes, model.materials) |mesh, material| {
+        for (model.meshes.items, model.materials.items) |mesh, material| {
 
             // Draw the mesh using the model's world matrix
             try self.drawMesh(

@@ -26,6 +26,7 @@ pub const graphics = struct {
     pub const Renderer = @import("graphics/renderer.zig").Renderer;
     pub const Material = @import("graphics/material.zig").Material;
     pub const Shader = @import("graphics/shader.zig").Shader;
+    pub const Texture = @import("graphics/texture.zig").Texture;
 
     pub const Model = @import("graphics/model.zig").Model;
     pub const Mesh = @import("graphics/mesh.zig").Mesh;

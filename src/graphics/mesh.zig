@@ -72,39 +72,55 @@ pub const Mesh = struct {
     }
 
     pub fn createCube() !Mesh {
-        // Cube vertices: 8 points with positions (x,y,z)
-        const vertices = [_]f32{
-            // Front
-            -0.5, -0.5,  0.5, // 0
-             0.5, -0.5,  0.5, // 1
-             0.5,  0.5,  0.5, // 2
-            -0.5,  0.5,  0.5, // 3
-            // Back
-            -0.5, -0.5, -0.5, // 4
-             0.5, -0.5, -0.5, // 5
-             0.5,  0.5, -0.5, // 6
-            -0.5,  0.5, -0.5, // 7
-        };
-        const indices = [_]u32{
-            // Front
-            0, 1, 2, 0, 2, 3,
-            // Right
-            1, 5, 6, 1, 6, 2,
-            // Back
-            5, 4, 7, 5, 7, 6,
-            // Left
-            4, 0, 3, 4, 3, 7,
-            // Top
-            3, 2, 6, 3, 6, 7,
-            // Bottom
-            4, 5, 1, 4, 1, 0,
-        };
-        return Mesh.init(
-            &vertices,
-            &indices,
-            VertexLayout.Pos()
-        );
-    }
+    const vertices = [_]f32{
+        // Positions          // Texture coords
+        // Front face
+        -0.5, -0.5,  0.5,    0.0, 0.0, // Bottom-left
+         0.5, -0.5,  0.5,    1.0, 0.0, // Bottom-right
+         0.5,  0.5,  0.5,    1.0, 1.0, // Top-right
+        -0.5,  0.5,  0.5,    0.0, 1.0, // Top-left
+        // Back face
+        -0.5, -0.5, -0.5,    1.0, 0.0, // Bottom-right
+         0.5, -0.5, -0.5,    0.0, 0.0, // Bottom-left
+         0.5,  0.5, -0.5,    0.0, 1.0, // Top-left
+        -0.5,  0.5, -0.5,    1.0, 1.0, // Top-right
+        // Top face
+        -0.5,  0.5, -0.5,    0.0, 0.0, // Bottom-left
+         0.5,  0.5, -0.5,    1.0, 0.0, // Bottom-right
+         0.5,  0.5,  0.5,    1.0, 1.0, // Top-right
+        -0.5,  0.5,  0.5,    0.0, 1.0, // Top-left
+        // Bottom face
+        -0.5, -0.5, -0.5,    0.0, 0.0, // Top-left
+         0.5, -0.5, -0.5,    1.0, 0.0, // Top-right
+         0.5, -0.5,  0.5,    1.0, 1.0, // Bottom-right
+        -0.5, -0.5,  0.5,    0.0, 1.0, // Bottom-left
+        // Right face
+         0.5, -0.5, -0.5,    0.0, 0.0, // Bottom-left
+         0.5,  0.5, -0.5,    1.0, 0.0, // Top-left
+         0.5,  0.5,  0.5,    1.0, 1.0, // Top-right
+         0.5, -0.5,  0.5,    0.0, 1.0, // Bottom-right
+        // Left face
+        -0.5, -0.5, -0.5,    1.0, 0.0, // Bottom-right
+        -0.5,  0.5, -0.5,    1.0, 1.0, // Top-right
+        -0.5,  0.5,  0.5,    0.0, 1.0, // Top-left
+        -0.5, -0.5,  0.5,    0.0, 0.0  // Bottom-left
+    };
+
+    const indices = [_]u32{
+        0,  1,  2,  2,  3,  0,  // Front
+        4,  5,  6,  6,  7,  4,  // Back
+        8,  9,  10, 10, 11, 8,  // Top
+        12, 13, 14, 14, 15, 12, // Bottom
+        16, 17, 18, 18, 19, 16, // Right
+        20, 21, 22, 22, 23, 20  // Left
+    };
+
+    return Mesh.init(
+        &vertices,
+        &indices,
+        VertexLayout.PosTex()
+    );
+}
 
     pub fn createTriangle() !Mesh {
         // Triangle vertices: 3 points with positions (x,y,z)

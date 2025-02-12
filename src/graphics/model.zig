@@ -13,117 +13,116 @@ pub const ModelError = error{
 };
 
 pub const Model = struct {
-    meshes: []*Mesh,
-    materials: []*Material,
-    mesh_count: usize,
-    material_count: usize,
+    meshes: std.ArrayList(*Mesh),
+    materials: std.ArrayList(*Material),
     allocator: std.mem.Allocator,
+    owns_resources: bool,
     
 
     // ==== Struct creation and deletion ==== \\
 
-    /// Initialize a new model with given mesh and material capacity
-    pub fn initEmpty(allocator: std.mem.Allocator, mesh_capacity: usize, material_capacity: usize) !Model {
+    /// Initialize a new model with empty dynamic lists for meshes and materials.
+    pub fn init(allocator: std.mem.Allocator, owns_resources: bool) !Model {
         return Model{
-            .meshes = try allocator.alloc(*Mesh, mesh_capacity),
-            .materials = try allocator.alloc(*Material, material_capacity),
-            .mesh_count = 0,
-            .material_count = 0,
+            .meshes = std.ArrayList(*Mesh).init(allocator),
+            .materials = std.ArrayList(*Material).init(allocator),
             .allocator = allocator,
+            .owns_resources = owns_resources,
         };
     }
 
 
-    /// Clean up model resources
+    /// Clean up model resources.
     pub fn deinit(self: *Model) void {
-
-        // Free meshes
-        var i: usize = 0;
-        while (i < self.mesh_count) : (i += 1) {
-            self.meshes[i].deinit();
+        if (self.owns_resources) {
+            // Free meshes
+            for (self.meshes.items) |mesh_ptr| {
+                mesh_ptr.deinit();
+                self.allocator.destroy(mesh_ptr);
+            }
+            // Free materials
+            for (self.materials.items) |material_ptr| {
+                material_ptr.deinit();
+                self.allocator.destroy(material_ptr);
+            }
         }
-
-        // Free materials - no need to call deinit() on materials
-        i = 0;
-        while (i < self.material_count) : (i += 1) {
-            // Just destroy the allocated material instance
-            // self.allocator.destroy(self.materials[i]);
-        }
-
-        self.allocator.free(self.meshes);
-        self.allocator.free(self.materials);
+        self.meshes.deinit();
+        self.materials.deinit();
     }
 
-    // ==== MODEL MANAGEMENT ==== \\ 
-
-    /// Add a mesh to the model
-    pub fn addMesh(self: *Model, mesh: *Mesh) ModelError!void {
-        if (self.mesh_count >= self.meshes.len) {
-            return ModelError.OutOfSpace;
+    /// Add a mesh to the model. If owns_resources is true, clone the mesh.
+    pub fn addMesh(self: *Model, mesh: *Mesh) !void {
+        if (self.owns_resources) {
+            const cloned = try self.allocator.create(Mesh);
+            // For a deep copy, you would also duplicate the OpenGL buffers if needed.
+            cloned.* = mesh.*;
+            try self.meshes.append(cloned);
+        } else {
+            try self.meshes.append(mesh);
         }
-        self.meshes[self.mesh_count] = mesh;
-        self.mesh_count += 1;
     }
 
+    /// Remove a mesh from the model.
     pub fn removeMesh(self: *Model, index: usize) ModelError!void {
-        if (index >= self.mesh_count) {
+        if (index >= self.meshes.items.len) {
             return ModelError.InvalidIndex;
         }
-
-        if (self.meshes[index]) |mesh| {
+        if (self.owns_resources) {
+            const mesh = self.meshes.items[index];
             mesh.deinit();
             self.allocator.destroy(mesh);
-            
-            // Shift remaining meshes
-            var i = index;
-            while (i < self.mesh_count - 1) : (i += 1) {
-                self.meshes[i] = self.meshes[i + 1];
+        }
+        self.meshes.items.remove(index);
+    }
+
+    /// Add a material to the model.
+    pub fn addMaterial(self: *Model, material: *Material) !void {
+        if (self.owns_resources) {
+            // Clone the material if we own resources
+            const new_material = try self.allocator.create(Material);
+            errdefer self.allocator.destroy(new_material);
+            new_material.* = material.*;
+            // If material has a texture, increment its reference count
+            if (new_material.texture) |texture| {
+                texture.addRef();
             }
-            self.mesh_count -= 1;
+            try self.materials.append(new_material);
+        } else {
+            try self.materials.append(material);
         }
     }
 
-    /// Add a material to the model
-    pub fn addMaterial(self: *Model, material: *Material) ModelError!void {
-        if (self.material_count >= self.materials.len) {
-            return ModelError.OutOfSpace;
-        }
-        self.materials[self.material_count] = material;
-        self.material_count += 1;
-    }
-
-    /// Remove a material from the model
+    /// Remove a material from the model.
     pub fn removeMaterial(self: *Model, index: usize) ModelError!void {
-        if (index >= self.material_count) {
+        if (index >= self.materials.items.len) {
             return ModelError.InvalidIndex;
         }
-
-        if (self.materials[index]) |material| {
+        const material = self.materials.items[index];
+        if (self.owns_resources) {
+            // If we own the material, decrease texture reference count
+            if (material.texture) |texture| {
+                texture.release();
+            }
             material.deinit();
             self.allocator.destroy(material);
-            // Shift remaining materials
-            var i = index;
-            while (i < self.material_count - 1) : (i += 1) {
-                self.materials[i] = self.materials[i + 1];
-            }
-            self.material_count -= 1;
         }
+        _ = self.materials.orderedRemove(index);
     }
 
     // ==== UTILITY FUNCTIONS ==== \\
 
-    pub fn getMeshCount(self: Model) usize {
-        return self.mesh_count;
+    pub fn getMeshCount(self: *Model) usize {
+        return self.meshes.items.len;
     }
 
-    pub fn getMaterialCount(self: Model) usize {
-        return self.material_count;
+    pub fn getMaterialCount(self: *Model) usize {
+        return self.materials.items.len;
     }
 
-    pub fn getMesh(self: Model, index: usize) ModelError!*Mesh {
-        if (index >= self.mesh_count) {
+    pub fn getMesh(self: *Model, index: usize) ModelError!*Mesh {
+        if (index >= self.meshes.items.len) {
             return ModelError.InvalidIndex;
         }
-        return self.meshes[index];
+        return self.meshes.items[index];
     }
 };
