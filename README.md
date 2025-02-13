@@ -18,10 +18,11 @@ It will be relatively high-level while still being able to access low-level comp
 ### Core Functionality
 - [x] Create a **simple** working Input system.
 - [x] Make a Camera system
+- [ ] Improve upon the Input system.
 
 ### Rendering
 - [x] Create a simple model/mesh rendering system.
-- [ ] Add a texturing system.
+- [x] Add simple texturing.
 - [ ] Add primitive mesh shapes.
 - [ ] Add a lighting system.
 
