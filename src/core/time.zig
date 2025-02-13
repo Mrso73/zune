@@ -1,6 +1,6 @@
 // time.zig - Time management module
 const std = @import("std");
-const c = @import("../c.zig");
+const c = @import("../bindings/c.zig");
 
 /// Configuration for the time system
 pub const TimeConfig = struct {

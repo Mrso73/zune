@@ -1,56 +1,43 @@
 // root.zig - Main framework entry point
 const std = @import("std");
-pub const c = @import("c.zig");
-
-pub const config = struct {
-    
-};
+pub const c = @import("bindings/c.zig");
 
 
-// Core functionality
+
+/// Core engine functionality for window management, input, and timing
 pub const core = struct {
-    pub const Window = @import("core/window.zig").Window;
-    pub const WindowConfig = @import("core/window.zig").WindowConfig;
-
-    pub const Time = @import("core/time.zig");
-    pub const Input = @import("core/input.zig").Input;
+    pub usingnamespace @import("core/window.zig");
+    pub usingnamespace @import("core/time.zig");
+    pub usingnamespace @import("core/input.zig");
     
 };
 
 
 // Graphics functionality
 pub const graphics = struct {
-    pub const CameraMouseController = @import("graphics/camera.zig").CameraMouseController;
-    pub const Camera = @import("graphics/camera.zig").Camera;
+    pub usingnamespace @import("renderer/camera.zig");
 
-    pub const Renderer = @import("graphics/renderer.zig").Renderer;
-    pub const Material = @import("graphics/material.zig").Material;
-    pub const Shader = @import("graphics/shader.zig").Shader;
-    pub const Texture = @import("graphics/texture.zig").Texture;
+    pub usingnamespace @import("renderer/renderer.zig");
+    pub usingnamespace @import("renderer/material.zig");
+    pub usingnamespace @import("renderer/shader.zig");
+    pub usingnamespace @import("renderer/texture.zig");
 
-    pub const Model = @import("graphics/model.zig").Model;
-    pub const Mesh = @import("graphics/mesh.zig").Mesh;
-
-    pub const AttributeType = @import("graphics/mesh.zig").AttributeType;
-    pub const VertexAttributeDescriptor = @import("graphics/mesh.zig").VertexAttributeDescriptor;
-    pub const VertexLayout = @import("graphics/mesh.zig").VertexLayout;
+    pub usingnamespace @import("renderer/model.zig");
+    pub usingnamespace @import("renderer/mesh.zig");
 };
 
 
 // Scene
 pub const ecs = struct {
-    pub const EntityID = @import("ecs/ecs.zig").EntityId;
-    pub const ComponentStorage = @import("ecs/ecs.zig").ComponentStorage;
-    pub const Query = @import("ecs/ecs.zig").Query;
-    pub const Registry = @import("ecs/ecs.zig").Registry;
+    pub usingnamespace @import("ecs/ecs.zig");
 
     pub const components = struct {
-        pub const TransformComponent = @import("ecs/components/transformComponent.zig").TransformComponent;
-        pub const ModelComponent = @import("ecs/components/modelComponent.zig").ModelComponent;
+        pub usingnamespace @import("ecs/components/transform_component.zig");
+        pub usingnamespace @import("ecs/components/model_component.zig");
     };
 
     pub const systems = struct {
-        usingnamespace @import("ecs/systems//renderSystem.zig");
+        usingnamespace @import("ecs/systems/render_system.zig");
     };
 };
 
@@ -59,9 +46,10 @@ pub const ecs = struct {
 pub const math = struct {
     pub usingnamespace @import("math/common.zig");
 
-    const Vec2 = @import("math/vector.zig").Vec2;
-    const Vec3 = @import("math/vector.zig").Vec3;
-    const Mat4 = @import("math/matrix.zig").Mat4;
+    pub usingnamespace @import("math/vector.zig");
+    pub usingnamespace @import("math/vector.zig");
+    pub usingnamespace @import("math/matrix.zig");
+
     pub const constants = struct {
         pub const PI: f32 = 3.14159265359;
         pub const TAU: f32 = PI * 2.0;
@@ -72,7 +60,7 @@ pub const math = struct {
 
 // Error handling
 pub const err = struct {
-    pub const gl = @import("err/gl.zig");
+    pub usingnamespace @import("core/gl.zig");
 };
 
 

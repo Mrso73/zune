@@ -1,6 +1,6 @@
 // err/gl.zig
 const std = @import("std");
-const c = @import("../c.zig");
+const c = @import("../bindings/c.zig");
 
 pub fn checkGLError(context: []const u8) void {
     const error_code = c.glGetError();

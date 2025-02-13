@@ -1,5 +1,5 @@
 const std = @import("std");
-const Model = @import("../../graphics/model.zig").Model;
+const Model = @import("../../renderer/model.zig").Model;
 
 pub const ModelComponent = struct {
     model: *Model,

@@ -1,7 +1,7 @@
 // graphics/renderer.zig
 const std = @import("std");
-const c = @import("../c.zig");
-const err = @import("../err/gl.zig");
+const c = @import("../bindings/c.zig");
+const err = @import("../core/gl.zig");
 
 const Camera = @import("camera.zig").Camera;
 

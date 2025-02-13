@@ -1,6 +1,6 @@
 // camera.zig
 const std = @import("std");
-const c = @import("../c.zig");
+const c = @import("../bindings/c.zig");
 
 const math = @import("../math/common.zig");
 const Vec3 = @import("../math/vector.zig").Vec3;

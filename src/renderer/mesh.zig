@@ -1,8 +1,8 @@
 // graphics/mesh.zig
 
 const std = @import("std");
-const c = @import("../c.zig");
-const err = @import("../err/gl.zig");
+const c = @import("../bindings/c.zig");
+const err = @import("../core/gl.zig");
 
 
 pub const Mesh = struct {

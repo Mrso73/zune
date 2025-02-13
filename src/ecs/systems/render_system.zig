@@ -1,9 +1,9 @@
 // ecs/systems/render_system.zig
-const Renderer = @import("../../graphics/renderer.zig").Renderer;
+const Renderer = @import("../../renderer/renderer.zig").Renderer;
 const Registry = @import("../ecs.zig").Registry;
 
-const TransformComponent = @import("../components/transformComponent.zigg").TransformComponent;
-const ModelComponent = @import("../components/modelComponent.zig").ModelComponent;
+const TransformComponent = @import("../components/transform_component.zigg").TransformComponent;
+const ModelComponent = @import("../components/model_component.zig").ModelComponent;
 
 const EcsError = @import("../ecs.zig").EcsError;
 

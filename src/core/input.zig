@@ -1,5 +1,5 @@
 const std = @import("std");
-const c = @import("../c.zig");
+const c = @import("../bindings/c.zig");
 const Window = @import("window.zig").Window;
 
 

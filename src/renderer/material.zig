@@ -1,6 +1,6 @@
 // graphics/material.zig
 const std = @import("std");
-const c = @import("../c.zig");
+const c = @import("../bindings/c.zig");
 
 const Shader = @import("shader.zig").Shader;
 const Renderer = @import("renderer.zig").Renderer; // Still needed

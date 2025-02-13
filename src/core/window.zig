@@ -1,5 +1,5 @@
 const std = @import("std");
-const c = @import("../c.zig"); // Import c libraries like GLFW and GLAD
+const c = @import("../bindings/c.zig"); // Import c libraries like GLFW and GLAD
 
 fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error: {d} {s}\n", .{ err, description });
