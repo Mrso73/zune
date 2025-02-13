@@ -19,6 +19,11 @@ pub const Texture = struct {
     allocator: std.mem.Allocator,
     ref_count: usize,
 
+
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     // In your Texture.createFromFile function
     pub fn createFromFile(allocator: std.mem.Allocator, path: []const u8) !*Texture {
         // Check if file exists first
@@ -36,6 +41,54 @@ pub const Texture = struct {
         self.ref_count = 1;
         return self;
     }
+
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
+
+    pub fn addRef(self: *Texture) void {
+        self.ref_count += 1;
+    }
+
+
+    /// Binds the texture to a specified texture unit.
+    pub fn bind(self: *Texture, textureUnit: c_int) void {
+        const texture_unit = c.GL_TEXTURE0 + textureUnit;
+        c.glActiveTexture(@intCast(texture_unit));
+        c.glBindTexture(c.GL_TEXTURE_2D, self.id);
+        err.checkGLError("glBindTexture");
+    }
+
+
+    pub fn printInfo(self: *Texture) void {
+        std.debug.print("Texture Info:\n", .{});
+        std.debug.print("  ID: {}\n", .{self.id});
+        std.debug.print("  Dimensions: {}x{}\n", .{ self.width, self.height });
+        std.debug.print("  Channels: {}\n", .{self.channels});
+        std.debug.print("  Ref Count: {}\n", .{self.ref_count});
+    }
+
+
+    // ============================================================
+    // Public API: Destruction Function
+    // ============================================================
+
+    /// Deletes the texture object.
+    pub fn release(self: *Texture) void {
+        self.ref_count -= 1;
+        if (self.ref_count == 0) {
+            c.glDeleteTextures(1, &self.id);
+            // Free the Texture struct allocated by the allocator.
+            self.allocator.destroy(self);
+        }
+    }
+
+
+    // ============================================================
+    // Private Helper Functions
+    // ============================================================
+
 
     /// Loads a texture from file using stb_image.
     /// - path: a null-terminated string containing the file path.
@@ -127,35 +180,5 @@ pub const Texture = struct {
             .allocator = allocator,
             .ref_count = 0,
         };
-    }
-
-    /// Deletes the texture object.
-    pub fn release(self: *Texture) void {
-        self.ref_count -= 1;
-        if (self.ref_count == 0) {
-            c.glDeleteTextures(1, &self.id);
-            // Free the Texture struct allocated by the allocator.
-            self.allocator.destroy(self);
-        }
-    }
-
-    pub fn addRef(self: *Texture) void {
-        self.ref_count += 1;
-    }
-
-    /// Binds the texture to a specified texture unit.
-    pub fn bind(self: *Texture, textureUnit: c_int) void {
-        const texture_unit = c.GL_TEXTURE0 + textureUnit;
-        c.glActiveTexture(@intCast(texture_unit));
-        c.glBindTexture(c.GL_TEXTURE_2D, self.id);
-        err.checkGLError("glBindTexture");
-    }
-
-    pub fn printInfo(self: *Texture) void {
-        std.debug.print("Texture Info:\n", .{});
-        std.debug.print("  ID: {}\n", .{self.id});
-        std.debug.print("  Dimensions: {}x{}\n", .{ self.width, self.height });
-        std.debug.print("  Channels: {}\n", .{self.channels});
-        std.debug.print("  Ref Count: {}\n", .{self.ref_count});
     }
 };

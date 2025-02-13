@@ -18,10 +18,11 @@ pub const Renderer = struct {
     color_shader: Shader,
     textured_shader: Shader,
     active_camera: ?*Camera = null,
+    allocator: std.mem.Allocator,
 
 
     pub fn init(allocator: std.mem.Allocator) !Renderer {
-        _ = allocator;
+
         // Initialize OpenGL
         c.glEnable(c.GL_DEPTH_TEST);
 
@@ -72,6 +73,7 @@ pub const Renderer = struct {
         try textured_shader.cacheUniforms(&.{ "model", "view", "projection", "color", "texSampler" });
 
         return Renderer{
+            .allocator = allocator,
             .color_shader = color_shader,
             .textured_shader = textured_shader,
             .active_camera = null,
@@ -85,12 +87,12 @@ pub const Renderer = struct {
     }
 
 
-    pub fn createColorMaterial(self: *Renderer, color: [4]f32) !Material {
-        return Material.init(&self.color_shader, color, null);
+    pub fn createColorMaterial(self: *Renderer, color: [4]f32) !*Material {
+        return Material.create(self.allocator, &self.color_shader, color, null);
     }
 
-    pub fn createTexturedMaterial(self: *Renderer, color: [4]f32, texture: *Texture) !Material {
-        return Material.init(&self.textured_shader, color, texture);
+    pub fn createTexturedMaterial(self: *Renderer, color: [4]f32, texture: *Texture) !*Material {
+        return Material.create(self.allocator, &self.textured_shader, color, texture);
     }
 
 
@@ -160,14 +162,10 @@ pub const Renderer = struct {
     pub fn drawModel(self: *Renderer, model: *Model, transform_matrix: *const [16]f32) !void {
 
         // Iterate over each mesh-material pair
-        for (model.meshes.items, model.materials.items) |mesh, material| {
+        for (model.pairs.items) |pair| {
 
             // Draw the mesh using the model's world matrix
-            try self.drawMesh(
-                mesh, 
-                material, 
-                transform_matrix,
-            );
+            try self.drawMesh(pair.mesh, pair.material, transform_matrix);
         }
     }
 };

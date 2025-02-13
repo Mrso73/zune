@@ -61,16 +61,15 @@ pub fn main() !void {
     defer texture.release();
 
     var material = try renderer.createTexturedMaterial(.{ 1.0, 1.0, 1.0, 1.0 }, texture);
-    defer material.deinit();
+    defer material.release();
 
-    var cube_mesh = try zune.graphics.Mesh.createCube();
-    defer cube_mesh.deinit();
+    var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
+    defer cube_mesh.release();
 
-    var cube_model = try zune.graphics.Model.init(allocator, false);
-    defer cube_model.deinit();
+    var cube_model = try zune.graphics.Model.create(allocator);
+    defer cube_model.release();
 
-    try cube_model.addMesh(&cube_mesh);
-    try cube_model.addMaterial(&material);
+    try cube_model.addMeshMaterial(cube_mesh, material);
 
 
 
@@ -116,7 +115,7 @@ pub fn main() !void {
         });
 
         // Set Model to render
-        try registry.addComponent(entity, zune.ecs.components.ModelComponent.init(&cube_model));
+        try registry.addComponent(entity, zune.ecs.components.ModelComponent.init(cube_model));
     }
 
 
