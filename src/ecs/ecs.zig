@@ -142,29 +142,25 @@ pub const Registry = struct {
     free_indices: std.ArrayList(u32),
     component_stores: std.AutoHashMap(ComponentTypeId, ComponentStorageMetadata),
 
-    pub fn init(allocator: std.mem.Allocator) !Self {
-        return .{
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
+    pub fn init(allocator: std.mem.Allocator) !*Self {
+        const registry_ptr = try allocator.create(Self);
+        registry_ptr.* = .{
             .allocator = allocator,
             .generations = std.ArrayList(u32).init(allocator),
             .free_indices = std.ArrayList(u32).init(allocator),
             .component_stores = std.AutoHashMap(ComponentTypeId, ComponentStorageMetadata).init(allocator),
         };
-    }
-
-    pub fn deinit(self: *Self) void {
-        var iter = self.component_stores.iterator();
-        while (iter.next()) |entry| {
-            const info = entry.value_ptr.*;
-            info.deinitFn(info.ptr, self.allocator);
-        }
-        self.component_stores.deinit();
-        self.generations.deinit();
-        self.free_indices.deinit();
+        return registry_ptr;
     }
 
 
-    // -----------------------------------------
-
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
 
     // New simplified entity creation
     pub fn createEntity(self: *Self) !EntityId {
@@ -178,6 +174,7 @@ pub const Registry = struct {
         try self.generations.append(1);
         return EntityId{ .index = index, .generation = 1 };
     }
+
 
     pub fn destroyEntity(self: *Self, entity: EntityId) !void {
         if (!self.isValidEntity(entity)) return EcsError.InvalidEntity;
@@ -204,9 +201,6 @@ pub const Registry = struct {
     }
 
 
-    // -----------------------------------------
-
-
     // New simplified component registration
     pub fn registerComponent(self: *Self, comptime T: type) !void {
         const type_id = std.hash.Wyhash.hash(0, @typeName(T));
@@ -221,12 +215,14 @@ pub const Registry = struct {
         );
     }
 
+
     // New simplified component addition
     pub fn addComponent(self: *Self, entity: EntityId, component: anytype) !void {
         const T = @TypeOf(component);
         const storage = try self.getComponentStorage(T);
         try storage.add(entity, component);
     }
+
 
     // Helper to get component storage
     fn getComponentStorage(self: *Self, comptime T: type) !*ComponentStorage(T) {
@@ -237,12 +233,27 @@ pub const Registry = struct {
     }
 
 
-    // -----------------------------------------
-
-
     // New query creation
     pub fn query(self: *Self, comptime Components: type) !Query(Components) {
         return Query(Components).init(self);
+    }
+
+
+    // ============================================================
+    // Public API: Destruction Function
+    // ============================================================
+
+    pub fn release(self: *Self) void {
+        var iter = self.component_stores.iterator();
+        while (iter.next()) |entry| {
+            const info = entry.value_ptr.*;
+            info.deinitFn(info.ptr, self.allocator);
+        }
+        self.component_stores.deinit();
+        self.generations.deinit();
+        self.free_indices.deinit();
+
+        self.allocator.destroy(self);
     }
 };
 

@@ -144,10 +144,15 @@ pub const Input = struct {
     mouse_delta: MousePosition,
     previous_mouse_pos: MousePosition,
     
+
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     pub fn init(allocator: std.mem.Allocator, window: *Window) !*Input {
-        const self = try allocator.create(Input);
+        const input_ptr = try allocator.create(Input);
         
-        self.* = .{
+        input_ptr.* = .{
             .allocator = allocator,
             .window = window,
             .current_keys = std.AutoHashMap(KeyCode, InputState).init(allocator),
@@ -159,10 +164,15 @@ pub const Input = struct {
             .previous_mouse_pos = .{ .x = 0, .y = 0 },
         };
         
-        try self.setupCallbacks();
+        try input_ptr.setupCallbacks();
 
-        return self;
+        return input_ptr;
     }
+
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
     
     fn setupCallbacks(self: *Input) !void {
         const window_handle = self.window.handle;
@@ -288,7 +298,7 @@ pub const Input = struct {
         return self.mouse_delta;
     }
     
-    pub fn deinit(self: *Input) void {
+    pub fn release(self: *Input) void {
         self.current_keys.deinit();
         self.previous_keys.deinit();
         self.current_mouse.deinit();

@@ -46,8 +46,13 @@ pub const Window = struct {
         GLContextCreationFailed,
     };
 
+
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     // Initialize GLFW and create window
-    pub fn init(allocator: std.mem.Allocator, config: WindowConfig) !*Window {
+    pub fn create(allocator: std.mem.Allocator, config: WindowConfig) !*Window {
 
         // Initialize GLFW
         if (c.glfwInit() != c.GLFW_TRUE) {
@@ -92,8 +97,8 @@ pub const Window = struct {
         c.glfwSwapInterval(if (config.vsync) 1 else 0);
 
         // Create Window struct
-        const self = try allocator.create(Window);
-        self.* = .{
+        const self_ptr = try allocator.create(Window);
+        self_ptr.* = .{
             .handle = window,
             .allocator = allocator,
             .config = config,
@@ -108,21 +113,28 @@ pub const Window = struct {
         // Store self pointer in GLFW user pointer
         //c.glfwSetWindowUserPointer(window, self); TODO: REMOVE OR UNCOMMENT
 
-        return self;
+        return self_ptr;
     }
 
-    // Window state queries --------------------------------------------------------
+
+    // ============================================================
+    // Public API: Window Management Functions
+    // ============================================================
+
     pub fn shouldClose(self: *const Window) bool {
         return c.glfwWindowShouldClose(self.handle) == c.GLFW_TRUE;
     }
+
 
     pub fn isMinimized(self: *const Window) bool {
         return self.is_minimized;
     }
 
+
     pub fn isFocused(self: *const Window) bool {
         return self.is_focused;
     }
+
 
     pub fn getSize(self: *const Window) struct { width: u32, height: u32 } {
         var width: c_int = undefined;
@@ -134,6 +146,7 @@ pub const Window = struct {
             .height = if (height < 0) 0 else @intCast(height),
         };
     }   
+
 
     // Window control
     pub fn setCursorMode(self: *Window, mode: CursorMode) void {
@@ -149,6 +162,7 @@ pub const Window = struct {
             std.debug.print("Warning: Failed to set cursor mode\n", .{});
         }
     }
+
 
     pub fn centerWindow(self: *Window) void {
         const monitor = c.glfwGetPrimaryMonitor();
@@ -171,38 +185,48 @@ pub const Window = struct {
         }
     }
 
+
     pub fn minimize(self: *Window) void {
         c.glfwIconifyWindow(self.handle);
     }
+
 
     pub fn maximize(self: *Window) void {
         c.glfwMaximizeWindow(self.handle);
     }
 
+
     pub fn restore(self: *Window) void {
         c.glfwRestoreWindow(self.handle);
     }
 
+
     pub fn setTitle(self: *Window, title: [:0]const u8) void {
         c.glfwSetWindowTitle(self.handle, title);
     }
+
 
     pub fn setVsync(self: *Window, enabled: bool) void {
         _ = self; // temp
         c.glfwSwapInterval(if (enabled) 1 else 0);
     }
 
+
     pub fn swapBuffers(self: *Window) void {
         c.glfwSwapBuffers(self.handle);
     }
+
 
     pub fn pollEvents(self: *Window) void {
         _ = self;
         c.glfwPollEvents();
     }
 
-    // Cleanup
-    pub fn deinit(self: *Window) void {
+    // ============================================================
+    // Public API: Destruction Function
+    // ============================================================
+
+    pub fn release(self: *Window) void {
         c.glfwDestroyWindow(self.handle);
         c.glfwTerminate();
         self.allocator.destroy(self);
