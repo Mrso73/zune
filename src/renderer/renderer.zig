@@ -5,23 +5,27 @@ const err = @import("../core/gl.zig");
 
 const Camera = @import("camera.zig").Camera;
 
-const Shader = @import("shader.zig").Shader;
-const Material = @import("material.zig").Material;
-
-const Mesh = @import("mesh.zig").Mesh;
 const Model = @import("model.zig").Model;
-
+const Mesh = @import("mesh.zig").Mesh;
+const Material = @import("material.zig").Material;
+const Shader = @import("shader.zig").Shader;
 const Texture = @import("texture.zig").Texture;
+
+const Mat4 = @import("../math/matrix.zig").Mat4;
 
 
 pub const Renderer = struct {
     color_shader: Shader,
     textured_shader: Shader,
-    active_camera: ?*Camera = null,
     allocator: std.mem.Allocator,
 
 
-    pub fn init(allocator: std.mem.Allocator) !Renderer {
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
+    /// Initialize a new renderer and return a pointer to it
+    pub fn create(allocator: std.mem.Allocator) !*Renderer {
 
         // Initialize OpenGL
         c.glEnable(c.GL_DEPTH_TEST);
@@ -72,18 +76,14 @@ pub const Renderer = struct {
         var textured_shader = try Shader.create(tex_vert, tex_frag);
         try textured_shader.cacheUniforms(&.{ "model", "view", "projection", "color", "texSampler" });
 
-        return Renderer{
+
+        const render_ptr = try allocator.create(Renderer);
+        render_ptr.* = .{
             .allocator = allocator,
             .color_shader = color_shader,
             .textured_shader = textured_shader,
-            .active_camera = null,
         };
-    }
-
-
-    pub fn deinit(self: *Renderer) void {
-        self.color_shader.deinit();
-        self.textured_shader.deinit();
+        return render_ptr;
     }
 
 
@@ -124,17 +124,8 @@ pub const Renderer = struct {
     }
 
 
-    pub fn setActiveCamera(self: *Renderer, camera: *Camera) void {
-        self.active_camera = camera;
-    }
-
-
     // Updated draw function to accept Mesh
-    pub fn drawMesh(self: *Renderer, mesh: *Mesh, material: *Material, model_matrix: *const [16]f32) !void {
-        if (self.active_camera == null) {
-            std.debug.print("Warning: No active camera set for rendering mesh.\n", .{});
-            return;
-        }
+    pub fn drawMesh(self: *Renderer, mesh: *Mesh, material: *Material, model_matrix: *const [16]f32, view_matrix: *const [16]f32, projection_matrix: *const [16]f32) !void {
 
         try material.use(self);
 
@@ -142,10 +133,10 @@ pub const Renderer = struct {
             try material.shader.setUniformMat4("model", model_matrix);
         }
         if (material.shader.uniform_cache.contains("view")) {
-            try material.shader.setUniformMat4("view", &self.active_camera.?.view_matrix.data);
+            try material.shader.setUniformMat4("view", view_matrix);
         }
         if (material.shader.uniform_cache.contains("projection")) {
-            try material.shader.setUniformMat4("projection", &self.active_camera.?.projection_matrix.data);
+            try material.shader.setUniformMat4("projection", projection_matrix);
         }
 
         mesh.bind(); // Bind Mesh
@@ -159,13 +150,25 @@ pub const Renderer = struct {
         mesh.draw(); // Draw Mesh
     }
 
-    pub fn drawModel(self: *Renderer, model: *Model, transform_matrix: *const [16]f32) !void {
+    pub fn drawModel(self: *Renderer, model: *Model, model_matrix: *const [16]f32, view_matrix: *const [16]f32, projection_matrix: *const [16]f32) !void {
 
         // Iterate over each mesh-material pair
         for (model.pairs.items) |pair| {
 
             // Draw the mesh using the model's world matrix
-            try self.drawMesh(pair.mesh, pair.material, transform_matrix);
+            try self.drawMesh(pair.mesh, pair.material, model_matrix, view_matrix, projection_matrix);
         }
+    }
+
+
+    // ============================================================
+    // Public API: Destruction Function
+    // ============================================================
+
+    pub fn release(self: *Renderer) void {
+        self.color_shader.deinit();
+        self.textured_shader.deinit();
+
+        self.allocator.destroy(self);
     }
 };

@@ -2,6 +2,11 @@
 const std = @import("std");
 const c = @import("../bindings/c.zig");
 
+const Renderer = @import("renderer.zig").Renderer;
+const Model = @import("model.zig").Model;
+const Mesh = @import("mesh.zig").Mesh;
+const Material = @import("material.zig").Material;
+
 const math = @import("../math/common.zig");
 const Vec3 = @import("../math/vector.zig").Vec3;
 const Mat4 = @import("../math/matrix.zig").Mat4;
@@ -9,6 +14,8 @@ const Mat4 = @import("../math/matrix.zig").Mat4;
 /// Camera implementation supporting both perspective and orthographic projections.
 /// Handles view and projection matrix calculations for 3D rendering.
 pub const Camera = struct {
+    active_renderer: *Renderer,
+
     position: Vec3 = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
     target: Vec3 = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
     up: Vec3 = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
@@ -33,9 +40,14 @@ pub const Camera = struct {
     },
 
 
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     // Initialize a perspective camera with the given parameters
-    pub fn initPerspective(fov: f32, aspect: f32, near: f32, far: f32) Camera {
+    pub fn initPerspective(renderer_ptr: *Renderer, fov: f32, aspect: f32, near: f32, far: f32) Camera {
         var camera = Camera{
+            .active_renderer = renderer_ptr,
             .near = near,
             .far = far,
             .camera_type = .{
@@ -52,8 +64,9 @@ pub const Camera = struct {
     
 
     /// Initialize an orthographic camera with the given parameters
-    pub fn initOrthographic(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) Camera {
+    pub fn initOrthographic(renderer_ptr: *Renderer, left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) Camera {
         var camera = Camera{
+            .active_renderer = renderer_ptr, 
             .near = near,
             .far = far,
             .camera_type = .{
@@ -68,6 +81,21 @@ pub const Camera = struct {
         camera.updateProjection();
         camera.updateViewMatrix();
         return camera;
+    }
+
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
+
+    /// Draw a model from the camera perspective
+    pub fn drawModel(self: Camera, model: *Model, model_matrix: *const [16]f32) !void {
+        try self.active_renderer.drawModel(model, model_matrix, &self.view_matrix.data, &self.projection_matrix.data);
+    }
+
+
+    pub fn drawMesh(self: Camera, mesh: Mesh, material: Material, model_matrix: *const [16]f32) !void {
+        try self.active_renderer.drawMesh(mesh, material, model_matrix, self.view_matrix.data, self.projection_matrix.data);
     }
 
 
