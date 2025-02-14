@@ -149,7 +149,7 @@ pub const Input = struct {
     // Public API: Creation Functions
     // ============================================================
 
-    pub fn init(allocator: std.mem.Allocator, window: *Window) !*Input {
+    pub fn create(allocator: std.mem.Allocator, window: *Window) !*Input {
         const input_ptr = try allocator.create(Input);
         
         input_ptr.* = .{

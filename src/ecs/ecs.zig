@@ -146,7 +146,7 @@ pub const Registry = struct {
     // Public API: Creation Functions
     // ============================================================
 
-    pub fn init(allocator: std.mem.Allocator) !*Self {
+    pub fn create(allocator: std.mem.Allocator) !*Self {
         const registry_ptr = try allocator.create(Self);
         registry_ptr.* = .{
             .allocator = allocator,

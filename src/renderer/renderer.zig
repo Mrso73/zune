@@ -87,15 +87,6 @@ pub const Renderer = struct {
     }
 
 
-    pub fn createColorMaterial(self: *Renderer, color: [4]f32) !*Material {
-        return Material.create(self.allocator, &self.color_shader, color, null);
-    }
-
-    pub fn createTexturedMaterial(self: *Renderer, color: [4]f32, texture: *Texture) !*Material {
-        return Material.create(self.allocator, &self.textured_shader, color, texture);
-    }
-
-
     pub fn clear(self: *Renderer) void {
         _ = self;
         c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
