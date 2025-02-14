@@ -2,8 +2,9 @@
 const std = @import("std");
 const c = @import("../bindings/c.zig");
 
+const err = @import("../core/gl.zig");
+
 const Shader = @import("shader.zig").Shader;
-const Renderer = @import("renderer.zig").Renderer; // Still needed
 const Texture = @import("texture.zig").Texture;
 
 
@@ -48,8 +49,9 @@ pub const Material = struct {
     }
 
     /// Uses the material for rendering.
-    pub fn use(self: *Material, renderer: *Renderer) !void {
-        renderer.useShader(self.shader);
+    pub fn use(self: *Material) !void {
+        c.glUseProgram(self.shader.program);
+        err.checkGLError("glUseProgram");
 
         // Set material-specific uniforms
         try self.shader.setUniformVec4("color", self.color);

@@ -1,6 +1,6 @@
 // graphics/model.zig
-
 const std = @import("std");
+
 const Mesh = @import("mesh.zig").Mesh;
 const Material = @import("material.zig").Material;
 
@@ -16,7 +16,7 @@ pub const ModelError = error{
 pub const MeshMaterialPair = struct {
     mesh: *Mesh,
     material: *Material,
-};
+}; 
 
 
 pub const Model = struct {

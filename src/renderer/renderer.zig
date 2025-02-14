@@ -3,13 +3,10 @@ const std = @import("std");
 const c = @import("../bindings/c.zig");
 const err = @import("../core/gl.zig");
 
-const Camera = @import("camera.zig").Camera;
-
 const Model = @import("model.zig").Model;
 const Mesh = @import("mesh.zig").Mesh;
 const Material = @import("material.zig").Material;
 const Shader = @import("shader.zig").Shader;
-const Texture = @import("texture.zig").Texture;
 
 const Mat4 = @import("../math/matrix.zig").Mat4;
 
@@ -108,17 +105,11 @@ pub const Renderer = struct {
     }
 
 
-    pub fn useShader(self: *Renderer, shader: *Shader) void {
-        _ = self;
-        c.glUseProgram(shader.program);
-        err.checkGLError("glUseProgram");
-    }
-
-
     // Updated draw function to accept Mesh
     pub fn drawMesh(self: *Renderer, mesh: *Mesh, material: *Material, model_matrix: *const [16]f32, view_matrix: *const [16]f32, projection_matrix: *const [16]f32) !void {
+        _ = self;
 
-        try material.use(self);
+        try material.use();
 
         if (material.shader.uniform_cache.contains("model")) {
             try material.shader.setUniformMat4("model", model_matrix);
@@ -137,7 +128,6 @@ pub const Renderer = struct {
         c.glGetIntegerv(c.GL_CURRENT_PROGRAM, &current_program_id);
         err.checkGLError("glGetIntegerv");
 
-        self.useShader(material.shader);
         mesh.draw(); // Draw Mesh
     }
 
