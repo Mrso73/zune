@@ -9,24 +9,18 @@ const StringHashMap = std.StringHashMap;
 pub const Shader = struct {
     program: c.GLuint,
     uniform_cache: std.StringHashMap(UniformInfo),
+    ref_count: std.atomic.Value(u32),
+    allocator: std.mem.Allocator,
 
-    pub const UniformType = enum {
-        Mat4,
-        Vec4,
-        Texture2D,
-    };
-
-    pub const UniformInfo = struct {
-        location: c.GLint,
-        type: UniformType,
-    };
+    pub const UniformType = enum { Mat4, Vec4, Texture2D };
+    pub const UniformInfo = struct { location: c.GLint, type: UniformType };
 
 
     // ============================================================
     // Public API: Creation Functions
     // ============================================================
 
-    pub fn create(vertex_source: []const u8, fragment_source: []const u8) !Shader {
+    pub fn create(allocator: std.mem.Allocator, vertex_source: []const u8, fragment_source: []const u8) !*Shader {
         const vertex_shader = try compileShader(vertex_source, c.GL_VERTEX_SHADER);
         errdefer c.glDeleteShader(vertex_shader);
         
@@ -41,6 +35,13 @@ pub const Shader = struct {
 
         c.glAttachShader(program, vertex_shader);
         c.glAttachShader(program, fragment_shader);
+
+        defer {
+            c.glDetachShader(program, vertex_shader);
+            c.glDetachShader(program, fragment_shader);
+            c.glDeleteShader(vertex_shader);
+            c.glDeleteShader(fragment_shader);
+        }
 
         c.glLinkProgram(program);
 
@@ -65,15 +66,22 @@ pub const Shader = struct {
             return error.ShaderProgramValidationFailed;
         }
 
-        return Shader{
+        const shader_ptr = try allocator.create(Shader);
+        errdefer allocator.destroy(shader_ptr);
+
+        shader_ptr.* = .{
             .program = program,
-            .uniform_cache = std.StringHashMap(UniformInfo).init(std.heap.page_allocator),
+            .uniform_cache = std.StringHashMap(UniformInfo).init(allocator),
+            .ref_count = std.atomic.Value(u32).init(1),
+            .allocator = allocator,
         };
+
+        return shader_ptr;
     }
 
 
     /// Create a color shader to use
-    pub fn createColorShader() !Shader {
+    pub fn createColorShader(allocator: std.mem.Allocator) !*Shader {
 
         // Color Shader (no texture)
         const color_vert = 
@@ -92,7 +100,9 @@ pub const Shader = struct {
             \\uniform vec4 color;
             \\void main() { FragColor = color; }
         ;
-        var color_shader = try Shader.create(color_vert, color_frag);
+        var color_shader = try Shader.create(allocator, color_vert, color_frag);
+        errdefer color_shader.release(); 
+
         try color_shader.cacheUniforms(&.{ "model", "view", "projection", "color" });
 
         return color_shader;
@@ -100,10 +110,10 @@ pub const Shader = struct {
 
 
     /// Create texture shader to use
-    pub fn createTextureShader() !Shader {
+    pub fn createTextureShader(allocator: std.mem.Allocator) !*Shader {
 
         // Textured Shader
-        const tex_vert = 
+        const txtr_vert = 
             \\#version 330 core
             \\layout (location=0) in vec3 aPos;
             \\layout (location=1) in vec2 aTexCoord;
@@ -114,7 +124,7 @@ pub const Shader = struct {
             \\    TexCoord = aTexCoord;
             \\}
         ;
-        const tex_frag = 
+        const txtr_frag = 
             \\#version 330 core
             \\in vec2 TexCoord;
             \\out vec4 FragColor;
@@ -124,7 +134,9 @@ pub const Shader = struct {
             \\    FragColor = texture(texSampler, TexCoord) * color;
             \\}
         ;
-        var textured_shader = try Shader.create(tex_vert, tex_frag);
+        var textured_shader = try Shader.create(allocator, txtr_vert, txtr_frag);
+        errdefer textured_shader.release(); 
+
         try textured_shader.cacheUniforms(&.{ "model", "view", "projection", "color", "texSampler" });
 
         return textured_shader;
@@ -171,15 +183,26 @@ pub const Shader = struct {
         err.checkGLError("glUniform4fv"); // Add error check
     }
 
+
+    pub fn addRef(self: *Shader) void {
+        _ = self.ref_count.fetchAdd(1, .monotonic);
+    }
+
     
     // ============================================================
     // Public API: Destruction Function
     // ============================================================
     
-    pub fn deinit(self: *Shader) void {
-        c.glDeleteProgram(self.program);
-        err.checkGLError("glDeleteProgram"); // Add error check
-        self.uniform_cache.deinit();
+
+    pub fn release(self: *Shader) void {
+        const prev = self.ref_count.fetchSub(1, .monotonic);
+        if (prev == 1) {
+            c.glDeleteProgram(self.program);
+            err.checkGLError("glDeleteProgram");
+
+            self.uniform_cache.deinit();
+            self.allocator.destroy(self);
+        }
     }
 
 

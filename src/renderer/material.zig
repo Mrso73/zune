@@ -25,6 +25,8 @@ pub const Material = struct {
     pub fn create(allocator: std.mem.Allocator, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
         const material_ptr = try allocator.create(Material);
 
+        shader.addRef();
+
         if (texture) |tex| {
             tex.addRef();
         }
@@ -82,6 +84,8 @@ pub const Material = struct {
     // ============================================================
 
     fn deinit(self: *Material) void {
+
+        self.shader.release();
         if (self.texture) |tex| {
             // Release our hold on the texture.
             tex.release();

@@ -53,11 +53,14 @@ pub fn main() !void {
 
 
     // --- Create the model --- //
+
+    var txtr_shader = try zune.graphics.Shader.createTextureShader(allocator);
+    defer txtr_shader.release();
     
     var texture = try zune.graphics.Texture.createFromFile(allocator, "examples/entity-creation/txtr.png");
     defer texture.release();
 
-    var material = try zune.graphics.Material.create(allocator, &renderer.textured_shader, .{ 1.0, 1.0, 1.0, 1.0 }, texture);
+    var material = try zune.graphics.Material.create(allocator, txtr_shader, .{ 1.0, 1.0, 1.0, 1.0 }, texture);
     defer material.release();
 
     var cube_mesh = try zune.graphics.Mesh.createCube(allocator);

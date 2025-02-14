@@ -72,8 +72,11 @@ pub fn main() !void {
     var transform_1 = zune.ecs.components.TransformComponent.identity();
     var transform_2 = zune.ecs.components.TransformComponent.identity();
 
-    var material_1 = try zune.graphics.Material.create(allocator, &renderer.color_shader, .{ 0.0, 0.1, 0.4, 1.0 }, null);
-    var material_2 = try zune.graphics.Material.create(allocator, &renderer.color_shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
+    var shader = try zune.graphics.Shader.createColorShader(allocator);
+    defer shader.release();
+
+    var material_1 = try zune.graphics.Material.create(allocator, shader, .{ 0.0, 0.1, 0.4, 1.0 }, null);
+    var material_2 = try zune.graphics.Material.create(allocator, shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
     defer material_1.release();
     defer material_2.release();
 
