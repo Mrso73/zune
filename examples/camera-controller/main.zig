@@ -15,31 +15,31 @@ pub fn main() !void {
 
 
     //setup time utitilites
-    var time = zune.core.Time.Time.init(.{
+    var time = zune.core.Time.init(.{
         .target_fps = 120,
         .fixed_timestep = 1.0 / 60.0,
     });
 
 
     // create a window
-    var window = try zune.core.Window.init(allocator, .{
-        .title = "zune example-1",
+    var window = try zune.core.Window.create(allocator, .{
+        .title = "zune camera-controller-example",
         .width = WINDOW_WIDTH,
         .height = WINDOW_HEIGHT,
         .transparent = false,
         .decorated = true,
     });
-    defer window.deinit();
+    defer window.release();
 
 
     // setup input manager
-    var input = try zune.core.Input.init(allocator, window);
-    defer input.deinit();
+    var input = try zune.core.Input.create(allocator, window);
+    defer input.release();
 
 
     // create a renderer
-    var renderer = try zune.graphics.Renderer.init(allocator);
-    defer renderer.deinit();
+    var renderer = try zune.graphics.Renderer.create(allocator);
+    defer renderer.release();
 
 
     const window_size = window.getSize();
@@ -47,7 +47,7 @@ pub fn main() !void {
 
 
     // create a camera
-    var perspective_camera = zune.graphics.Camera.initPerspective(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
+    var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
     perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 5.0});
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
@@ -59,7 +59,6 @@ pub fn main() !void {
 
     window.centerWindow();
     window.setCursorMode(.disabled);
-    renderer.setActiveCamera(&perspective_camera);
     //renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
 
 
@@ -73,25 +72,24 @@ pub fn main() !void {
     var transform_1 = zune.ecs.components.TransformComponent.identity();
     var transform_2 = zune.ecs.components.TransformComponent.identity();
 
-    var material_1 = try zune.graphics.Material.init(&renderer.default_shader,.{ 0.0, 0.1, 0.4, 1.0 });
-    var material_2 = try zune.graphics.Material.init(&renderer.default_shader,.{ 0.5, 0.2, 0.3, 1.0 });
+    var material_1 = try zune.graphics.Material.create(allocator, &renderer.color_shader, .{ 0.0, 0.1, 0.4, 1.0 }, null);
+    var material_2 = try zune.graphics.Material.create(allocator, &renderer.color_shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
+    defer material_1.release();
+    defer material_2.release();
 
-    var cube_mesh = try zune.graphics.Mesh.createCube();
-    defer cube_mesh.deinit();
+    var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
+    defer cube_mesh.release();
 
-    var cube_model_1 = try zune.graphics.Model.initEmpty(allocator, 1, 1);
-    var cube_model_2 = try zune.graphics.Model.initEmpty(allocator, 1, 1);
-    defer cube_model_1.deinit();
-    defer cube_model_2.deinit();
+    var cube_model_1 = try zune.graphics.Model.create(allocator);
+    var cube_model_2 = try zune.graphics.Model.create(allocator);
+    defer cube_model_1.release();
+    defer cube_model_2.release();
 
-    try cube_model_1.addMesh(&cube_mesh);
-    try cube_model_2.addMesh(&cube_mesh);
-
-    try cube_model_1.addMaterial(&material_1);
-    try cube_model_2.addMaterial(&material_2);
+    try cube_model_1.addMeshMaterial(cube_mesh, material_1);
+    try cube_model_2.addMeshMaterial(cube_mesh, material_2);
 
 
-    //
+    // set position
     transform_2.setPosition(0.0, 2, 0.0);
     
 
@@ -140,13 +138,12 @@ pub fn main() !void {
         // ==== Drawing to the screen ==== \\
         // Clear the window
         renderer.clear();
-        zune.err.gl.checkGLError("after clear");
 
         transform_1.updateMatrices();
         transform_2.updateMatrices();
 
-        try renderer.drawModel(&cube_model_1, &transform_1.world_matrix);
-        try renderer.drawModel(&cube_model_2, &transform_2.world_matrix);
+        try perspective_camera.drawModel(cube_model_1, &transform_1.world_matrix);
+        try perspective_camera.drawModel(cube_model_2, &transform_2.world_matrix);
     
 
         window.pollEvents();

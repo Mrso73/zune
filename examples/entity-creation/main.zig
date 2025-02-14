@@ -13,33 +13,33 @@ pub fn main() !void {
     defer _ = gpa.deinit();
 
     // create a window
-    var window = try zune.core.Window.init(allocator, .{
-        .title = "zune example-1",
+    var window = try zune.core.Window.create(allocator, .{
+        .title = "zune ecs-example",
         .width = WINDOW_WIDTH,
         .height = WINDOW_HEIGHT,
         .transparent = false,
         .decorated = true,
     });
-    defer window.deinit();
+    defer window.release();
 
     // create a renderer
-    var renderer = try zune.graphics.Renderer.init(allocator);
-    defer renderer.deinit();
+    var renderer = try zune.graphics.Renderer.create(allocator);
+    defer renderer.release();
 
     // Initialize ECS registry
-    var registry = try zune.ecs.Registry.init(allocator);
-    defer registry.deinit();
+    var registry = try zune.ecs.Registry.create(allocator);
+    defer registry.release();
 
     // setup input manager
-    var input = try zune.core.Input.init(allocator, window);
-    defer input.deinit();
+    var input = try zune.core.Input.create(allocator, window);
+    defer input.release();
 
 
 
     // --- Set Variables --- //
 
     // create a camera
-    var perspective_camera = zune.graphics.Camera.initPerspective(std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
+    var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
     perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 75.0});
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
@@ -50,9 +50,6 @@ pub fn main() !void {
 
     window.centerWindow();
     window.setCursorMode(.disabled);
-    renderer.setActiveCamera(&perspective_camera);
-
-
 
 
     // --- Create the model --- //
@@ -60,7 +57,7 @@ pub fn main() !void {
     var texture = try zune.graphics.Texture.createFromFile(allocator, "examples/entity-creation/txtr.png");
     defer texture.release();
 
-    var material = try renderer.createTexturedMaterial(.{ 1.0, 1.0, 1.0, 1.0 }, texture);
+    var material = try zune.graphics.Material.create(allocator, &renderer.textured_shader, .{ 1.0, 1.0, 1.0, 1.0 }, texture);
     defer material.release();
 
     var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
@@ -129,11 +126,11 @@ pub fn main() !void {
         const mouse_pos = input.getMousePosition();   
         camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), 1.0 / 60.0);
 
-        try updatePhysics(&registry);
+        try updatePhysics(registry);
 
         renderer.clear();
         
-        try render(&registry, &renderer);
+        try render(perspective_camera, registry);
 
         window.pollEvents();
         window.swapBuffers();   
@@ -180,7 +177,7 @@ fn updatePhysics(registry: *zune.ecs.Registry) !void {
 }
 
 
-pub fn render(registry: *zune.ecs.Registry, renderer: *zune.graphics.Renderer) !void {
+pub fn render(camera: zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
     // Query for entities with all required components
     var query = try registry.query(struct {
         transform: *zune.ecs.components.TransformComponent,
@@ -195,7 +192,7 @@ pub fn render(registry: *zune.ecs.Registry, renderer: *zune.graphics.Renderer) !
         components.transform.updateMatrices();
 
         // Draw the model using current transform
-        try renderer.drawModel(
+        try camera.drawModel(
             components.model.model,
             &components.transform.world_matrix,
         );

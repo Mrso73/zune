@@ -14,41 +14,33 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
 
-
     // create a window
-    var window = try zune.core.Window.init(allocator, .{
-        .title = "zune example-1",
+    var window = try zune.core.Window.create(allocator, .{
+        .title = "zune window-example",
         .width = WINDOW_WIDTH,
         .height = WINDOW_HEIGHT,
-        .transparent = false,
-        .decorated = true,
     });
-    defer window.deinit();
+    defer window.release();
     
-
 
     // create a renderer
-    var renderer = try zune.graphics.Renderer.init(allocator);
-    defer renderer.deinit();
+    var renderer = try zune.graphics.Renderer.create(allocator);
+    defer renderer.release();
 
 
-    
     // Set values
     const window_size = window.getSize();
     renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
-
-    window.centerWindow();
     renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
 
+    window.centerWindow();
 
 
-
-
+    // Main loop
     while (!window.shouldClose()) {
 
         // Clear the window
         renderer.clear();
-        zune.err.gl.checkGLError("after clear");
 
         window.pollEvents();
         window.swapBuffers();
