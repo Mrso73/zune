@@ -9,6 +9,8 @@ const StringHashMap = std.StringHashMap;
 pub const Shader = struct {
     program: c.GLuint,
     uniform_cache: std.StringHashMap(UniformInfo),
+
+    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
 
@@ -67,7 +69,6 @@ pub const Shader = struct {
         }
 
         const shader_ptr = try allocator.create(Shader);
-        errdefer allocator.destroy(shader_ptr);
 
         shader_ptr.* = .{
             .program = program,
@@ -147,6 +148,10 @@ pub const Shader = struct {
     // Public API: Operational Functions
     // ============================================================
 
+    pub fn addRef(self: *Shader) void {
+        _ = self.ref_count.fetchAdd(1, .monotonic);
+    }
+
     pub fn cacheUniforms(self: *Shader, names: []const []const u8) !void {
         for (names) |name| {
             const t: UniformType = if (std.mem.eql(u8, name, "texSampler")) .Texture2D else .Mat4;
@@ -183,18 +188,13 @@ pub const Shader = struct {
         err.checkGLError("glUniform4fv"); // Add error check
     }
 
-
-    pub fn addRef(self: *Shader) void {
-        _ = self.ref_count.fetchAdd(1, .monotonic);
-    }
-
     
     // ============================================================
     // Public API: Destruction Function
     // ============================================================
     
 
-    pub fn release(self: *Shader) void {
+    pub fn release(self: *Shader) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
         if (prev == 1) {
             c.glDeleteProgram(self.program);
@@ -203,6 +203,7 @@ pub const Shader = struct {
             self.uniform_cache.deinit();
             self.allocator.destroy(self);
         }
+        return prev;
     }
 
 

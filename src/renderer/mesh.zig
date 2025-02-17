@@ -10,8 +10,10 @@ pub const Mesh = struct {
     vbo: c.GLuint,
     ebo: c.GLuint,
     index_count: usize,
-    allocator: std.mem.Allocator,
+    
+    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
+    allocator: std.mem.Allocator,
 
 
     // ============================================================
@@ -139,12 +141,18 @@ pub const Mesh = struct {
     // Public API: Destruction Function
     // ============================================================
 
-    pub fn release(self: *Mesh) void {
+    pub fn release(self: *Mesh) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
         if (prev == 1) {
-            self.deinit();
+
+            // Delete OpenGL resources
+            c.glDeleteVertexArrays(1, &self.vao);
+            c.glDeleteBuffers(1, &self.vbo);
+            c.glDeleteBuffers(1, &self.ebo);
+
             self.allocator.destroy(self);
         }
+        return prev;
     }
 
 
@@ -204,13 +212,6 @@ pub const Mesh = struct {
         self.vbo = vbo;
         self.ebo = ebo;
         self.index_count = indices.len;
-    }
-
-    /// Cleanup OpenGL resources
-    fn deinit(self: *Mesh) void {
-        c.glDeleteVertexArrays(1, &self.vao);
-        c.glDeleteBuffers(1, &self.vbo);
-        c.glDeleteBuffers(1, &self.ebo);
     }
 };
 

@@ -13,6 +13,7 @@ pub const Material = struct {
     color: [4]f32,
     texture: ?*Texture,
 
+    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
 
@@ -70,25 +71,17 @@ pub const Material = struct {
     // Public API: Destruction Function
     // ============================================================
 
-    pub fn release(self: *Material) void {
+    pub fn release(self: *Material) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
         if (prev == 1) {
-            self.deinit(); // call private cleanup
+        
+            _ = self.shader.release();
+            if (self.texture) |tex| {
+                _ = tex.release();
+            }
+
             self.allocator.destroy(self);
         }
-    }
-
-
-    // ============================================================
-    // Private Helper Functions
-    // ============================================================
-
-    fn deinit(self: *Material) void {
-
-        self.shader.release();
-        if (self.texture) |tex| {
-            // Release our hold on the texture.
-            tex.release();
-        }
+        return prev;
     }
 };

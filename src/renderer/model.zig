@@ -21,10 +21,12 @@ pub const MeshMaterialPair = struct {
 
 pub const Model = struct {
     pairs: std.ArrayList(MeshMaterialPair),
+
+    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
-    
 
+    
     // ============================================================
     // Public API: Creation Functions
     // ============================================================
@@ -66,25 +68,18 @@ pub const Model = struct {
     // Public API: Destruction Function
     // ============================================================
 
-    pub fn release(self: *Model) void {
+    pub fn release(self: *Model) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
         if (prev == 1) {
-            self.deinit(); // call private cleanup
+            
+            for (self.pairs.items) |pair| {
+                _ = pair.mesh.release();
+                _ = pair.material.release();
+            }
+
+            self.pairs.deinit();
             self.allocator.destroy(self);
         }
-    }
-
-
-    // ============================================================
-    // Private Helper Functions
-    // ============================================================
-
-    /// Clean up model resources
-    fn deinit(self: *Model) void {
-        for (self.pairs.items) |pair| {
-            pair.mesh.release();
-            pair.material.release();
-        }
-        self.pairs.deinit();
+        return prev;
     }
 };

@@ -24,6 +24,8 @@ pub const graphics = struct {
 
     pub usingnamespace @import("renderer/model.zig");
     pub usingnamespace @import("renderer/mesh.zig");
+
+    pub usingnamespace @import("renderer/resource_manager.zig");
 };
 
 
@@ -46,7 +48,6 @@ pub const ecs = struct {
 pub const math = struct {
     pub usingnamespace @import("math/common.zig");
 
-    pub usingnamespace @import("math/vector.zig");
     pub usingnamespace @import("math/vector.zig");
     pub usingnamespace @import("math/matrix.zig");
 

@@ -16,8 +16,11 @@ pub const Texture = struct {
     width: i32,
     height: i32,
     channels: i32,
+
+    is_managed: bool = false,
+    ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
-    ref_count: usize,
+    
 
 
     // ============================================================
@@ -38,7 +41,7 @@ pub const Texture = struct {
 
         self.* = try initFromFile(allocator, normalized_path);
         self.allocator = allocator;
-        self.ref_count = 1;
+        self.ref_count = std.atomic.Value(u32).init(1);
         return self;
     }
 
@@ -48,7 +51,7 @@ pub const Texture = struct {
     // ============================================================
 
     pub fn addRef(self: *Texture) void {
-        self.ref_count += 1;
+        _ = self.ref_count.fetchAdd(1, .monotonic);
     }
 
 
@@ -75,13 +78,16 @@ pub const Texture = struct {
     // ============================================================
 
     /// Deletes the texture object.
-    pub fn release(self: *Texture) void {
-        self.ref_count -= 1;
-        if (self.ref_count == 0) {
+    pub fn release(self: *Texture) u32 {
+        const prev = self.ref_count.fetchSub(1, .monotonic);
+        if (prev == 1) {
             c.glDeleteTextures(1, &self.id);
+            err.checkGLError("glDeleteTextures");
+
             // Free the Texture struct allocated by the allocator.
             self.allocator.destroy(self);
         }
+        return prev;
     }
 
 
