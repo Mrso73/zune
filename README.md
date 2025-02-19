@@ -8,22 +8,30 @@ re-write the framework in the Zig programming language because i have taken a li
 
 ## About the engine
 
-The Zune engine will be completely 3D, you can still ofcourse draw 2D shapes, but everything will always be in a 3d worldspace.
+The Zune engine will be completely 3D, you can still ofcourse draw 2D shapes, but everything will always be in a 3d world-space.
 It will be relatively high-level while still being able to access low-level components.
+
+
+
+## How to install?
+
+- install zig (0.13.0 - soon to be 0.14.0)
+- clone the repo
 
 
 
 ## Roadmap
 
 ### Core Functionality
-- [x] Create a **simple** working Input system.
+- [x] Create a **simple** working Input System.
 - [x] Make a Camera system
 - [ ] Improve upon the Input system.
 
 ### Rendering
 - [x] Create a simple model/mesh rendering system.
 - [x] Add simple texturing.
-- [ ] Add primitive mesh shapes.
+- [x] Building a ***basic** Resource Manager.
+- [x] Add primitive mesh shapes.
 - [ ] Add a lighting system.
 
 ### Entity Component System
