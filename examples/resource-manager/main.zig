@@ -14,13 +14,6 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
 
-    //setup time utitilites
-    var time = zune.core.Time.init(.{
-        .target_fps = 120,
-        .fixed_timestep = 1.0 / 60.0,
-    });
-
-
     // create a window
     var window = try zune.core.Window.create(allocator, .{
         .title = "zune camera-controller-example",
@@ -37,10 +30,24 @@ pub fn main() !void {
     defer input.release();
 
 
+    //setup time utitilites
+    var time = zune.core.Time.init(.{
+        .target_fps = 120,
+        .fixed_timestep = 1.0 / 60.0,
+    });
+
+
     // create a renderer
     var renderer = try zune.graphics.Renderer.create(allocator);
     defer renderer.release();
 
+    var resource_manager = zune.graphics.ResourceManager.init(allocator);
+    defer resource_manager.deinit();
+
+
+
+
+    // --- Set values --- //
 
     const window_size = window.getSize();
     renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
@@ -59,11 +66,7 @@ pub fn main() !void {
 
     window.centerWindow();
     window.setCursorMode(.disabled);
-    //renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
-
-
-
-
+    renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
 
 
 
@@ -72,22 +75,15 @@ pub fn main() !void {
     var transform_1 = zune.ecs.components.TransformComponent.identity();
     var transform_2 = zune.ecs.components.TransformComponent.identity();
 
-    var shader = try zune.graphics.Shader.createColorShader(allocator);
-    defer shader.release();
+    const shader = try resource_manager.createColorShader();
+    
+    const material_1 = try resource_manager.createMaterial("mat1", shader, .{ 0.0, 0.1, 0.4, 1.0 }, null);
+    const material_2 = try resource_manager.createMaterial("mat2", shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
 
-    var material_1 = try zune.graphics.Material.create(allocator, shader, .{ 0.0, 0.1, 0.4, 1.0 }, null);
-    var material_2 = try zune.graphics.Material.create(allocator, shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
-    defer material_1.release();
-    defer material_2.release();
+    const cube_mesh = try resource_manager.createCubeMesh();
 
-
-    var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
-    defer cube_mesh.release();
-
-    var cube_model_1 = try zune.graphics.Model.create(allocator);
-    var cube_model_2 = try zune.graphics.Model.create(allocator);
-    defer cube_model_1.release();
-    defer cube_model_2.release();
+    var cube_model_1 = try resource_manager.createModel("model1");
+    var cube_model_2 = try resource_manager.createModel("model2");
 
     try cube_model_1.addMeshMaterial(cube_mesh, material_1);
     try cube_model_2.addMeshMaterial(cube_mesh, material_2);
@@ -105,7 +101,6 @@ pub fn main() !void {
 
 
         // ==== Update Variables ==== \\  
-        time.update();
         try input.update();
 
         // Get delta time
@@ -153,4 +148,18 @@ pub fn main() !void {
         window.pollEvents();
         window.swapBuffers();
     }
+    	
+        
+    try resource_manager.releaseModel("model1");
+    try resource_manager.releaseModel("model2");
+
+    try resource_manager.releaseMesh("standard_cube_mesh"); 
+
+    try resource_manager.releaseMaterial("mat1");
+    try resource_manager.releaseMaterial("mat2");
+
+    try resource_manager.releaseShader("color_shader");
+
+    
+    
 }

@@ -26,6 +26,8 @@ pub fn build(b: *std.Build) void {
         "window-setup",
         "entity-creation",
         "camera-controller",
+        "resource-manager",
+        "game-example",
     };
 
     // create example executable
