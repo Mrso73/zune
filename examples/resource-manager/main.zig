@@ -41,8 +41,8 @@ pub fn main() !void {
     var renderer = try zune.graphics.Renderer.create(allocator);
     defer renderer.release();
 
-    var resource_manager = zune.graphics.ResourceManager.init(allocator);
-    defer resource_manager.deinit();
+    var resource_manager = try zune.graphics.ResourceManager.create(allocator);
+    defer resource_manager.releaseAll();
 
 
 

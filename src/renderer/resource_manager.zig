@@ -42,8 +42,11 @@ pub const ResourceManager = struct {
     // ============================================================
 
     /// Initialize a new resource manager
-    pub fn init(allocator: std.mem.Allocator) ResourceManager {
-        return ResourceManager{
+    pub fn create(allocator: std.mem.Allocator) !*ResourceManager {
+        const resource_manager_ptr = try allocator.create(ResourceManager);
+        errdefer allocator.destroy(resource_manager_ptr);
+
+        resource_manager_ptr.* = ResourceManager {
             .allocator = allocator,
             .models = std.StringHashMap(*Model).init(allocator),
             .meshes = std.StringHashMap(*Mesh).init(allocator),
@@ -52,6 +55,7 @@ pub const ResourceManager = struct {
             .textures = std.StringHashMap(*Texture).init(allocator),
 
         };
+        return resource_manager_ptr;
     }
 
 
@@ -184,7 +188,7 @@ pub const ResourceManager = struct {
 
 
     /// Load a texture from file, or return existing if already loaded
-    pub fn loadTexture(self: *ResourceManager, path: []const u8) !*Texture {
+    pub fn createTexture(self: *ResourceManager, path: []const u8) !*Texture {
 
         // Check if already loaded
         if (self.textures.get(path)) |existing| {
@@ -293,7 +297,7 @@ pub const ResourceManager = struct {
 
 
     /// Clean up all resources and print debug info about remaining resources
-    pub fn deinit(self: *ResourceManager) void {
+    pub fn releaseAll(self: *ResourceManager) void {
         // std.debug.print("\n=== Resource Manager Cleanup Start ===\n", .{});
         
         // Track counts for debug output
@@ -404,6 +408,8 @@ pub const ResourceManager = struct {
             total_models + total_meshes + total_materials + total_textures + total_shaders
         });
         std.debug.print("=== Resource Manager Cleanup Complete ===\n\n", .{});
+
+        self.allocator.destroy(self);
     }
 
 
