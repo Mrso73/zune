@@ -4,6 +4,7 @@ const std = @import("std");
 
 const Model = @import("model.zig").Model;
 const Mesh = @import("mesh.zig").Mesh;
+const VertexLayout = @import("mesh.zig").VertexLayout;
 const Material = @import("material.zig").Material;
 const Texture = @import("texture.zig").Texture;
 const Shader = @import("shader.zig").Shader;
@@ -85,7 +86,9 @@ pub const ResourceManager = struct {
 
 
     /// Create a mesh with the given parameters
-    pub fn createMesh(self: *ResourceManager, name: []const u8, vertices: []const f32, indices: []const u32, layout: Mesh.VertexLayout) !*Mesh {
+    pub fn createMesh(self: *ResourceManager, name: []const u8, vertices: []const f32, indices: []const u32, normals: ?[]f32) !*Mesh {
+
+
 
         // Check if already exists
         if (self.meshes.get(name)) |existing| {
@@ -98,9 +101,11 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-
         // Create the mesh creation function
-        const mesh = try Mesh.create(self.allocator, vertices, indices, layout);
+        const mesh = switch (normals) {
+            null => try Mesh.create(self.allocator, vertices, indices, VertexLayout.PosTex()),
+            else => | norm | Mesh.createWithNormals(self.allocator, vertices, norm, indices)
+        }; 
         errdefer _ = mesh.release();
 
 
