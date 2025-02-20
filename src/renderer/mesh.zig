@@ -19,14 +19,152 @@ pub const Mesh = struct {
     // Public API: Creation Functions
     // ============================================================
 
-    pub fn create(allocator: std.mem.Allocator, vertices: []const f32, indices: []const u32, layout: VertexLayout) !*Mesh {
-
-        var mesh_ptr = try allocator.create(Mesh);
+    fn create(allocator: std.mem.Allocator, vertices: []const f32, indices: []const u32, layout: VertexLayout) !*Mesh {
+        const mesh_ptr = try allocator.create(Mesh);
         errdefer allocator.destroy(mesh_ptr);
 
-        try mesh_ptr.init(vertices, indices, layout);
-        mesh_ptr.ref_count = std.atomic.Value(u32).init(1);
-        mesh_ptr.allocator = allocator;
+        var vao: c.GLuint = undefined;
+        var vbo: c.GLuint = undefined;
+        var ebo: c.GLuint = undefined;
+
+        // Generate buffers
+        c.glGenVertexArrays(1, &vao);
+        err.checkGLError("glGenVertexArrays for vao");
+
+        c.glGenBuffers(1, &vbo);
+        err.checkGLError("glGenBuffers for vbo");
+
+        c.glGenBuffers(1, &ebo);
+        err.checkGLError("glGenBuffers for ebo");
+
+        // Set up VAO
+        c.glBindVertexArray(vao);
+
+        // Vertex buffer
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+        c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len * @sizeOf(f32)), vertices.ptr, c.GL_STATIC_DRAW);
+        err.checkGLError("glBufferData for vertices");
+
+        // Element buffer
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len * @sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
+        err.checkGLError("glBufferData for indices");
+
+        // Set up vertex attributes based on layout
+        var offset: usize = 0;
+        for (layout.descriptors, 0..) |desc, i| {
+            const size: c.GLint = switch (desc.attribute_type) {
+                .Position => 3,
+                .TexCoord => 2,
+                .Normal => 3,
+            };
+
+            c.glVertexAttribPointer(@intCast(i), size, desc.data_type, c.GL_FALSE, @as(c.GLint, @intCast(layout.stride)), @ptrFromInt(offset) ); 
+            err.checkGLError("glVertexAttribPointer");
+
+            c.glEnableVertexAttribArray(@intCast(i));
+            err.checkGLError("glEnableVertexAttribArray");
+
+            offset += @intCast(size * @sizeOf(f32));
+        }
+
+        c.glBindVertexArray(0); // Unbind VAO
+
+        // Initialize the mesh
+        mesh_ptr.* = .{
+            .vao = vao,
+            .vbo = vbo,
+            .ebo = ebo,
+            .index_count = indices.len,
+            .ref_count = std.atomic.Value(u32).init(1),
+            .allocator = allocator,
+        };
+
+        return mesh_ptr;
+    }
+
+    // Create a mesh with positions and normals interleaved
+    pub fn createWithNormals(allocator: std.mem.Allocator, positions: []const f32, normals: []const f32, indices: []const u32) !*Mesh {
+        // Validate input data
+        if (positions.len % 3 != 0 or normals.len % 3 != 0 or positions.len != normals.len) {
+            return error.InvalidVertexData;
+        }
+
+        const vertex_count = positions.len / 3; // Assuming 3 floats per position/normal
+
+        // Interleaved data array (position + normal)
+        var interleaved_data = try allocator.alloc(f32, vertex_count * 6); // 6 floats: 3 pos + 3 norm
+        errdefer allocator.free(interleaved_data);
+
+        // Interleave position and normal data
+        for (0..vertex_count) |i| {
+            const pos_idx = i * 3;
+            const norm_idx = i * 3;
+            const vtx_idx = i * 6;
+
+            // Position (3 floats)
+            interleaved_data[vtx_idx + 0] = positions[pos_idx + 0];
+            interleaved_data[vtx_idx + 1] = positions[pos_idx + 1];
+            interleaved_data[vtx_idx + 2] = positions[pos_idx + 2];
+
+            // Normal (3 floats)
+            interleaved_data[vtx_idx + 3] = normals[norm_idx + 0];
+            interleaved_data[vtx_idx + 4] = normals[norm_idx + 1];
+            interleaved_data[vtx_idx + 5] = normals[norm_idx + 2];
+        }
+
+        // Create the mesh
+        const mesh_ptr = try Mesh.create(allocator, interleaved_data, indices, VertexLayout.PosNorm());
+        
+        // Free the temporary interleaved data buffer now that it's been uploaded to GPU
+        allocator.free(interleaved_data);
+        
+        return mesh_ptr;
+    }
+
+
+    // Create a mesh with positions, normals, and texture coordinates interleaved
+    pub fn createWithNormalsAndTexCoords(allocator: std.mem.Allocator, positions: []const f32, normals: []const f32, tex_coords: []const f32, indices: []const u32) !*Mesh {
+        // Validate input data
+        if (positions.len % 3 != 0 or normals.len % 3 != 0 or tex_coords.len % 2 != 0 or 
+            positions.len / 3 != normals.len / 3 or positions.len / 3 != tex_coords.len / 2) {
+            return error.InvalidVertexData;
+        }
+
+        const vertex_count = positions.len / 3;
+        
+        // Interleaved data: position (3) + normal (3) + texcoord (2) = 8 floats per vertex
+        var interleaved_data = try allocator.alloc(f32, vertex_count * 8);
+        errdefer allocator.free(interleaved_data);
+
+        // Interleave all vertex attributes
+        for (0..vertex_count) |i| {
+            const pos_idx = i * 3;
+            const norm_idx = i * 3;
+            const tex_idx = i * 2;
+            const vtx_idx = i * 8;
+
+            // Position (3 floats)
+            interleaved_data[vtx_idx + 0] = positions[pos_idx + 0];
+            interleaved_data[vtx_idx + 1] = positions[pos_idx + 1];
+            interleaved_data[vtx_idx + 2] = positions[pos_idx + 2];
+
+            // Normal (3 floats)
+            interleaved_data[vtx_idx + 3] = normals[norm_idx + 0];
+            interleaved_data[vtx_idx + 4] = normals[norm_idx + 1];
+            interleaved_data[vtx_idx + 5] = normals[norm_idx + 2];
+
+            // Texture coordinate (2 floats)
+            interleaved_data[vtx_idx + 6] = tex_coords[tex_idx + 0];
+            interleaved_data[vtx_idx + 7] = tex_coords[tex_idx + 1];
+        }
+
+        // Create the mesh
+        const mesh_ptr = try Mesh.create(allocator, interleaved_data, indices, VertexLayout.PosNormTex());
+        
+        // Free the temporary interleaved data buffer
+        allocator.free(interleaved_data);
+        
         return mesh_ptr;
     }
 
@@ -141,17 +279,18 @@ pub const Mesh = struct {
     // Public API: Destruction Function
     // ============================================================
 
+    // Decrement reference count and free if no more references
     pub fn release(self: *Mesh) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
-        if (prev == 1) {
-
-            // Delete OpenGL resources
-            c.glDeleteVertexArrays(1, &self.vao);
-            c.glDeleteBuffers(1, &self.vbo);
-            c.glDeleteBuffers(1, &self.ebo);
-
+        
+        if (prev == 0) {
+            @panic("Double release of Mesh detected"); // already freed
+        } else if (prev == 1) {
+            // Last reference, clean up resources
+            self.deinit();
             self.allocator.destroy(self);
         }
+        
         return prev;
     }
 
@@ -160,59 +299,12 @@ pub const Mesh = struct {
     // Private Helper Functions
     // ============================================================
 
-    fn init(self: *Mesh, vertices: []const f32, indices: []const u32, layout: VertexLayout) !void {
-        var vao: c.GLuint = undefined;
-        var vbo: c.GLuint = undefined;
-        var ebo: c.GLuint = undefined;
-
-        // Generate buffers
-        c.glGenVertexArrays(1, &vao);
-        err.checkGLError("glGenVertexArrays for vao");
-
-        c.glGenBuffers(1, &vbo);
-        err.checkGLError("glGenBuffers for vbo");
-
-        c.glGenBuffers(1, &ebo);
-        err.checkGLError("glGenBuffers for ebo");
-
-        // Set up VAO
-        c.glBindVertexArray(vao);
-
-        // Vertex buffer
-        c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-        c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(vertices.len * @sizeOf(f32)), vertices.ptr, c.GL_STATIC_DRAW);
-        err.checkGLError("glBufferData for vertices");
-
-        // Element buffer
-        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len * @sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
-        err.checkGLError("glBufferData for indices");
-
-        // Set up vertex attributes based on layout
-        var offset: usize = 0;
-        for (layout.descriptors, 0..) |desc, i| {
-            const size: c.GLint = switch (desc.attribute_type) {
-                .Position => 3,
-                .TexCoord => 2,
-                .Normal => 3,
-            };
-
-            c.glVertexAttribPointer(@intCast(i), size, desc.data_type, c.GL_FALSE, @as(c.GLint, @intCast(layout.stride)), @ptrFromInt(offset) ); 
-            err.checkGLError("glVertexAttribPointer");
-
-            c.glEnableVertexAttribArray(@intCast(i));
-            err.checkGLError("glEnableVertexAttribArray");
-
-            offset += @intCast(size * @sizeOf(f32));
-        }
-
-        c.glBindVertexArray(0); // Unbind VAO
-
-        // Save the generated buffer IDs and index count
-        self.vao = vao;
-        self.vbo = vbo;
-        self.ebo = ebo;
-        self.index_count = indices.len;
+    // Clean up OpenGL resources
+    fn deinit(self: *Mesh) void {
+        c.glDeleteVertexArrays(1, &self.vao);
+        c.glDeleteBuffers(1, &self.vbo);
+        c.glDeleteBuffers(1, &self.ebo);
+        err.checkGLError("Mesh cleanup");
     }
 };
 
@@ -259,6 +351,25 @@ pub const VertexLayout = struct {
             .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
             .{ .attribute_type = .Normal, .data_type = c.GL_FLOAT },
         });
+    }
+
+    // Get the size of a specific attribute type
+    pub fn getAttributeSize(attr_type: AttributeType) usize {
+        return switch (attr_type) {
+            .Position => 3,
+            .TexCoord => 2,
+            .Normal => 3,
+        };
+    }
+
+    // Calculate offset of attribute within the interleaved data
+    pub fn getAttributeOffset(self: VertexLayout, attr_index: usize) usize {
+        var offset: usize = 0;
+        var i: usize = 0;
+        while (i < attr_index) : (i += 1) {
+            offset += getAttributeSize(self.descriptors[i].attribute_type) * @sizeOf(f32);
+        }
+        return offset;
     }
 };
 
