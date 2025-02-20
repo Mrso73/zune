@@ -65,16 +65,15 @@ pub const ResourceManager = struct {
             return existing;
         }
 
-
         // Store in our maps
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-        
+
         // Create a empty model struct
         const model = try Model.create(self.allocator);
-        model.is_managed = true;
-    
+        errdefer _ = model.release();
+
 
         try self.models.put(owned_name, model);
         return model;
@@ -91,7 +90,6 @@ pub const ResourceManager = struct {
             return existing;
         }
 
-
         // Store in our maps
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
@@ -99,9 +97,9 @@ pub const ResourceManager = struct {
 
         // Create the mesh creation function
         const mesh = try Mesh.create(self.allocator, vertices, indices, layout);
-        mesh.is_managed = true;
-        
-    
+        errdefer _ = mesh.release();
+
+
         try self.meshes.put(owned_name, mesh);
         return mesh;
     }
@@ -126,9 +124,9 @@ pub const ResourceManager = struct {
 
         // Call the mesh creation function
         const mesh = try Mesh.createCube(self.allocator);
-        mesh.is_managed = true;
-        
-        
+        errdefer _ = mesh.release();
+
+
         try self.meshes.put(owned_name, mesh);   
         return mesh;
     }
@@ -153,8 +151,8 @@ pub const ResourceManager = struct {
 
         // call the mesh creation function
         const mesh = try Mesh.createQuad(self.allocator);
-        mesh.is_managed = true;
-        
+        errdefer _ = mesh.release();
+
 
         try self.meshes.put(owned_name, mesh);
         return mesh;
@@ -177,7 +175,8 @@ pub const ResourceManager = struct {
 
         // Call the metarial creation function
         const material = try Material.create(self.allocator, shader, color, texture);
-        material.is_managed = true;
+        errdefer _ = material.release();
+
 
         try self.materials.put(owned_name, material);
         return material;
@@ -200,8 +199,9 @@ pub const ResourceManager = struct {
 
         // Call the texture creation fucntion
         const texture = try Texture.createFromFile(self.allocator, path);
-        texture.is_managed = true;
-        
+        errdefer _ = texture.release();
+
+
         try self.textures.put(owned_path, texture);
         return texture;
     } 
@@ -223,8 +223,9 @@ pub const ResourceManager = struct {
 
         // Call the shader creation function
         const shader = try Shader.create(self.allocator, vertex_source, fragment_source);
-        shader.is_managed = true;
-        
+        errdefer _ = shader.release();
+
+
         try self.shaders.put(owned_name, shader);
         return shader;
     }

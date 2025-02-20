@@ -22,7 +22,6 @@ pub const MeshMaterialPair = struct {
 pub const Model = struct {
     pairs: std.ArrayList(MeshMaterialPair),
 
-    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
 
@@ -34,6 +33,8 @@ pub const Model = struct {
     /// Initialize a new model and return a pointer to it
     pub fn create(allocator: std.mem.Allocator) !*Model {
         const model_ptr = try allocator.create(Model);
+        errdefer allocator.destroy(model_ptr);
+
         model_ptr.* = .{
             .pairs = std.ArrayList(MeshMaterialPair).init(allocator),
             .allocator = allocator,

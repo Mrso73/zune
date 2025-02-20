@@ -17,7 +17,6 @@ pub const Texture = struct {
     height: i32,
     channels: i32,
 
-    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
     
@@ -36,13 +35,13 @@ pub const Texture = struct {
         const normalized_path = try std.fs.path.resolve(allocator, &[_][]const u8{path});
         defer allocator.free(normalized_path);
 
-        const self = try allocator.create(Texture);
-        errdefer allocator.destroy(self);
+        const texture_ptr = try allocator.create(Texture);
+        errdefer allocator.destroy(texture_ptr);
 
-        self.* = try initFromFile(allocator, normalized_path);
-        self.allocator = allocator;
-        self.ref_count = std.atomic.Value(u32).init(1);
-        return self;
+        texture_ptr.* = try initFromFile(allocator, normalized_path);
+        texture_ptr.allocator = allocator;
+        texture_ptr.ref_count = std.atomic.Value(u32).init(1);
+        return texture_ptr;
     }
 
 
@@ -184,7 +183,7 @@ pub const Texture = struct {
             .height = h,
             .channels = 4,  // forcing RGBA
             .allocator = allocator,
-            .ref_count = 0,
+            .ref_count = std.atomic.Value(u32).init(1),
         };
     }
 };

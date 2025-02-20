@@ -165,7 +165,7 @@ pub const Registry = struct {
     // New simplified entity creation
     pub fn createEntity(self: *Self) !EntityId {
         if (self.free_indices.items.len > 0) {
-            const index = self.free_indices.pop();
+            const index = self.free_indices.pop() orelse return error.yooo;
             const generation = self.generations.items[index];
             return EntityId{ .index = index, .generation = generation };
         }
@@ -287,21 +287,21 @@ pub fn Query(comptime Components: type) type {
                 // Extract underlying type if field is a pointer
                 const actual_type = @typeInfo(field.type);
                 const component_type = switch (actual_type) {
-                    .Pointer => |ptr| ptr.child,
+                    .pointer => |ptr| ptr.child,
                     else => field.type,
                 };
 
                 storage_fields[i] = .{
                     .name = field.name,
                     .type = *ComponentStorage(component_type),
-                    .default_value = null,
+                    .default_value_ptr = null,
                     .is_comptime = false,
                     .alignment = @alignOf(*ComponentStorage(component_type)),
                 };
             }
             
             break :blk @Type(.{
-                .Struct = .{
+                .@"struct" = .{
                     .layout = .auto,
                     .fields = &storage_fields,
                     .decls = &[_]std.builtin.Type.Declaration{},
@@ -321,7 +321,7 @@ pub fn Query(comptime Components: type) type {
             inline for (std.meta.fields(Components)) |field| {
                 const actual_type = @typeInfo(field.type);
                 const component_type = switch (actual_type) {
-                    .Pointer => |ptr| ptr.child,
+                    .pointer => |ptr| ptr.child,
                     else => field.type,
                 };
                 @field(result.storages, field.name) = try registry.getComponentStorage(component_type);

@@ -11,7 +11,6 @@ pub const Mesh = struct {
     ebo: c.GLuint,
     index_count: usize,
     
-    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
 
@@ -23,6 +22,7 @@ pub const Mesh = struct {
     pub fn create(allocator: std.mem.Allocator, vertices: []const f32, indices: []const u32, layout: VertexLayout) !*Mesh {
 
         var mesh_ptr = try allocator.create(Mesh);
+        errdefer allocator.destroy(mesh_ptr);
 
         try mesh_ptr.init(vertices, indices, layout);
         mesh_ptr.ref_count = std.atomic.Value(u32).init(1);
@@ -194,6 +194,7 @@ pub const Mesh = struct {
             const size: c.GLint = switch (desc.attribute_type) {
                 .Position => 3,
                 .TexCoord => 2,
+                .Normal => 3,
             };
 
             c.glVertexAttribPointer(@intCast(i), size, desc.data_type, c.GL_FALSE, @as(c.GLint, @intCast(layout.stride)), @ptrFromInt(offset) ); 
@@ -226,6 +227,7 @@ pub const VertexLayout = struct {
             stride += switch (desc.attribute_type) {
                 .Position => 3 * @sizeOf(f32),
                 .TexCoord => 2 * @sizeOf(f32),
+                .Normal => 3 * @sizeOf(f32),
             };
         }
         return .{ .descriptors = descriptors, .stride = stride };
@@ -251,6 +253,13 @@ pub const VertexLayout = struct {
             .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
         });
     }
+
+    pub fn PosNorm() VertexLayout {
+        return VertexLayout.init(&[_]VertexAttributeDescriptor{
+            .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
+            .{ .attribute_type = .Normal, .data_type = c.GL_FLOAT },
+        });
+    }
 };
 
 pub const VertexAttributeDescriptor = struct {
@@ -261,4 +270,5 @@ pub const VertexAttributeDescriptor = struct {
 pub const AttributeType = enum {
     Position,
     TexCoord,
+    Normal,
 };

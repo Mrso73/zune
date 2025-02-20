@@ -13,7 +13,6 @@ pub const Material = struct {
     color: [4]f32,
     texture: ?*Texture,
 
-    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
 
@@ -25,12 +24,11 @@ pub const Material = struct {
     /// Create a new material pointer.
     pub fn create(allocator: std.mem.Allocator, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
         const material_ptr = try allocator.create(Material);
+        errdefer allocator.destroy(material_ptr);
 
         shader.addRef();
 
-        if (texture) |tex| {
-            tex.addRef();
-        }
+        if (texture) |tex| tex.addRef();
         
         material_ptr.* = .{
             .allocator = allocator,
@@ -76,10 +74,7 @@ pub const Material = struct {
         if (prev == 1) {
         
             _ = self.shader.release();
-            if (self.texture) |tex| {
-                _ = tex.release();
-            }
-
+            if (self.texture) |tex| _ = tex.release();
             self.allocator.destroy(self);
         }
         return prev;

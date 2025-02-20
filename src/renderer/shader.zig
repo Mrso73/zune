@@ -10,7 +10,6 @@ pub const Shader = struct {
     program: c.GLuint,
     uniform_cache: std.StringHashMap(UniformInfo),
 
-    is_managed: bool = false,
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
 
@@ -69,6 +68,7 @@ pub const Shader = struct {
         }
 
         const shader_ptr = try allocator.create(Shader);
+        errdefer allocator.destroy(shader_ptr);
 
         shader_ptr.* = .{
             .program = program,
@@ -102,7 +102,7 @@ pub const Shader = struct {
             \\void main() { FragColor = color; }
         ;
         var color_shader = try Shader.create(allocator, color_vert, color_frag);
-        errdefer color_shader.release(); 
+        errdefer _ = color_shader.release(); 
 
         try color_shader.cacheUniforms(&.{ "model", "view", "projection", "color" });
 
@@ -136,7 +136,7 @@ pub const Shader = struct {
             \\}
         ;
         var textured_shader = try Shader.create(allocator, txtr_vert, txtr_frag);
-        errdefer textured_shader.release(); 
+        errdefer _ = textured_shader.release(); 
 
         try textured_shader.cacheUniforms(&.{ "model", "view", "projection", "color", "texSampler" });
 

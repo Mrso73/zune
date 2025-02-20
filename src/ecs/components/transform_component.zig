@@ -76,7 +76,7 @@ pub const TransformComponent = struct {
 
 
     /// Scale the model relative to its current scale
-    pub fn scale(self: *TransformComponent, x: f32, y: f32, z: f32) void {
+    pub fn relScale(self: *TransformComponent, x: f32, y: f32, z: f32) void {
         self.scale[0] *= x;
         self.scale[1] *= y;
         self.scale[2] *= z;

@@ -73,21 +73,21 @@ pub fn main() !void {
     var transform_2 = zune.ecs.components.TransformComponent.identity();
 
     var shader = try zune.graphics.Shader.createColorShader(allocator);
-    defer shader.release();
+    defer _ = shader.release();
 
     var material_1 = try zune.graphics.Material.create(allocator, shader, .{ 0.0, 0.1, 0.4, 1.0 }, null);
     var material_2 = try zune.graphics.Material.create(allocator, shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
-    defer material_1.release();
-    defer material_2.release();
+    defer _ = material_1.release();
+    defer _ = material_2.release();
 
 
     var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
-    defer cube_mesh.release();
+    defer _ = cube_mesh.release();
 
     var cube_model_1 = try zune.graphics.Model.create(allocator);
     var cube_model_2 = try zune.graphics.Model.create(allocator);
-    defer cube_model_1.release();
-    defer cube_model_2.release();
+    defer _ = cube_model_1.release();
+    defer _ = cube_model_2.release();
 
     try cube_model_1.addMeshMaterial(cube_mesh, material_1);
     try cube_model_2.addMeshMaterial(cube_mesh, material_2);

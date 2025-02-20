@@ -55,19 +55,19 @@ pub fn main() !void {
     // --- Create the model --- //
 
     var txtr_shader = try zune.graphics.Shader.createTextureShader(allocator);
-    defer txtr_shader.release();
+    defer _ = txtr_shader.release();
     
     var texture = try zune.graphics.Texture.createFromFile(allocator, "examples/entity-creation/txtr.png");
-    defer texture.release();
+    defer _ = texture.release();
 
     var material = try zune.graphics.Material.create(allocator, txtr_shader, .{ 1.0, 1.0, 1.0, 1.0 }, texture);
-    defer material.release();
+    defer _ = material.release();
 
     var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
-    defer cube_mesh.release();
+    defer _ = cube_mesh.release();
 
     var cube_model = try zune.graphics.Model.create(allocator);
-    defer cube_model.release();
+    defer _ = cube_model.release();
 
     try cube_model.addMeshMaterial(cube_mesh, material);
 
@@ -84,7 +84,7 @@ pub fn main() !void {
 
 
     // Create random generater
-    var prng = std.rand.DefaultPrng.init(0);
+    var prng = std.Random.DefaultPrng.init(0);
     var random = prng.random();
 
 
