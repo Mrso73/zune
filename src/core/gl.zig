@@ -11,6 +11,7 @@ pub fn checkGLError(context: []const u8) void {
     }
 }
 
+
 fn errorString(error_code: c.GLenum) []const u8 {
     return switch (error_code) {
         c.GL_NO_ERROR => "GL_NO_ERROR",

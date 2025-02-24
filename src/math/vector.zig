@@ -7,6 +7,11 @@ pub const Vec2 = struct {
 
     const Self = @This();
 
+
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     pub fn new(x: f32, y: f32) Self {
         return .{ .x = x, .y = y };
     }
@@ -14,6 +19,11 @@ pub const Vec2 = struct {
     pub fn zero() Self {
         return .{ .x = 0, .y = 0 };
     }
+
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
 
     pub fn add(self: Self, other: Self) Self {
         return .{
@@ -41,6 +51,11 @@ pub const Vec3 = struct {
 
     const Self = @This();
 
+
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     pub fn new(x: f32, y: f32, z: f32) Self {
         return .{ .x = x, .y = y, .z = z };
     }
@@ -48,6 +63,11 @@ pub const Vec3 = struct {
     pub fn zero() Self {
         return .{ .x = 0, .y = 0, .z = 0 };
     }
+
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
 
     pub fn add(self: Self, other: Self) Self {
         return .{

@@ -14,12 +14,14 @@ pub const TimeConfig = struct {
     time_source: TimeSource = .GLFW,
 };
 
+
 /// Available time sources
 pub const TimeSource = enum {
     GLFW,
     System,
     Custom,
 };
+
 
 /// Time system that tracks various timing metrics
 pub const Time = struct {
@@ -44,6 +46,11 @@ pub const Time = struct {
     /// Time source function pointer for flexibility
     getTime: *const fn () f64,
 
+
+    // ============================================================
+    // Public API: Destruction Function
+    // ============================================================
+
     /// Creates a new Time instance with the given configuration
     pub fn init(config: TimeConfig) Time {
         return .{
@@ -60,6 +67,11 @@ pub const Time = struct {
             .getTime = getTimeSource(config.time_source),
         };
     }
+
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
 
     /// Updates timing information for the current frame
     pub fn update(self: *Time) void {

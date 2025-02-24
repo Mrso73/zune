@@ -208,6 +208,10 @@ pub const CameraMouseController = struct {
     var max_delta: f32 = 100.0;
 
 
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
+
     /// Initialize the mouse controller with initial mouse position
     pub fn init(camera: *Camera, initial_x: f32, initial_y: f32) CameraMouseController {
         return .{
@@ -217,6 +221,10 @@ pub const CameraMouseController = struct {
         };
     }
 
+
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
 
     /// Handle mouse movement to update yaw, pitch, and the camera’s target.
     pub fn handleMouseMovement(self: *CameraMouseController, x_pos: f32, y_pos: f32, delta_time: f32) void {

@@ -5,6 +5,11 @@ pub const Mat4 = struct {
     data: [16]f32,
 
     const Self = @This();
+    
+
+    // ============================================================
+    // Public API: Creation Functions
+    // ============================================================
 
     pub fn identity() Self {
         return .{

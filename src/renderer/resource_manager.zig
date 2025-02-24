@@ -34,6 +34,7 @@ pub const ResourceManager = struct {
     textures: std.StringHashMap(*Texture),
     shaders: std.StringHashMap(*Shader),
 
+
     // ============================================================
     // Public API: Creation Functions
     // ============================================================
@@ -53,6 +54,7 @@ pub const ResourceManager = struct {
         };
         return resource_manager_ptr;
     }
+
 
     /// Create a model with the given name
     pub fn createModel(self: *ResourceManager, name: []const u8) !*Model {
@@ -75,6 +77,7 @@ pub const ResourceManager = struct {
         try self.models.put(owned_name, model);
         return model;
     }
+
 
     /// Create a mesh with the given parameters
     pub fn createMesh(self: *ResourceManager, name: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
@@ -101,6 +104,7 @@ pub const ResourceManager = struct {
         return mesh;
     }
 
+
     /// Create a standard cube mesh
     pub fn createCubeMesh(self: *ResourceManager) !*Mesh {
 
@@ -123,6 +127,7 @@ pub const ResourceManager = struct {
         try self.meshes.put(owned_name, mesh);
         return mesh;
     }
+
 
     /// Create a standard quad mesh
     pub fn createQuadMesh(self: *ResourceManager) !*Mesh {
@@ -147,6 +152,7 @@ pub const ResourceManager = struct {
         return mesh;
     }
 
+
     /// Create a material with the given parameters
     pub fn createMaterial(self: *ResourceManager, name: []const u8, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
 
@@ -168,6 +174,7 @@ pub const ResourceManager = struct {
         try self.materials.put(owned_name, material);
         return material;
     }
+
 
     /// Load a texture from file, or return existing if already loaded
     pub fn createTexture(self: *ResourceManager, path: []const u8) !*Texture {
@@ -191,6 +198,7 @@ pub const ResourceManager = struct {
         return texture;
     }
 
+
     /// Create a shader from source code
     pub fn createShader(self: *ResourceManager, name: []const u8, vertex_source: []const u8, fragment_source: []const u8) !*Shader {
 
@@ -212,6 +220,7 @@ pub const ResourceManager = struct {
         try self.shaders.put(owned_name, shader);
         return shader;
     }
+
 
     /// Create a color shader with standard parameters
     pub fn createColorShader(self: *ResourceManager) !*Shader {
@@ -235,6 +244,7 @@ pub const ResourceManager = struct {
         try color_shader.cacheUniforms(&.{ "model", "view", "projection", "color" });
         return color_shader;
     }
+
 
     /// Create a texture shader with standard parameters
     pub fn createTextureShader(self: *ResourceManager) !*Shader {
@@ -264,6 +274,7 @@ pub const ResourceManager = struct {
         try textured_shader.cacheUniforms(&.{ "model", "view", "projection", "color", "texSampler" });
         return textured_shader;
     }
+
 
     // ============================================================
     // Public API: Destruction Function
@@ -298,6 +309,7 @@ pub const ResourceManager = struct {
             self.models.deinit();
         }
 
+
         // Clean up meshes
         {
             var iter = self.meshes.iterator();
@@ -315,6 +327,7 @@ pub const ResourceManager = struct {
             }
             self.meshes.deinit();
         }
+
 
         // Clean up materials
         {
@@ -334,6 +347,7 @@ pub const ResourceManager = struct {
             self.materials.deinit();
         }
 
+
         // Clean up textures
         {
             var iter = self.textures.iterator();
@@ -351,6 +365,7 @@ pub const ResourceManager = struct {
             }
             self.textures.deinit();
         }
+
 
         // Clean up shaders
         {
@@ -370,6 +385,7 @@ pub const ResourceManager = struct {
             self.shaders.deinit();
         }
 
+
         // Print summary
         std.debug.print("\n=== Resource Manager Cleanup Summary ===\n", .{});
         std.debug.print("Models in manager: {d}\n", .{total_models});
@@ -383,6 +399,7 @@ pub const ResourceManager = struct {
         self.allocator.destroy(self);
     }
 
+
     /// Release a reference to a model
     pub fn releaseModel(self: *ResourceManager, name: []const u8) !void {
         const entry = self.models.getEntry(name) orelse return ResourceError.ResourceNotFound;
@@ -394,6 +411,7 @@ pub const ResourceManager = struct {
             self.allocator.free(key);
         }
     }
+
 
     /// Release a reference to a mesh
     pub fn releaseMesh(self: *ResourceManager, name: []const u8) !void {
@@ -407,6 +425,7 @@ pub const ResourceManager = struct {
         }
     }
 
+
     /// Release a reference to a material
     pub fn releaseMaterial(self: *ResourceManager, name: []const u8) !void {
         const entry = self.materials.getEntry(name) orelse return ResourceError.ResourceNotFound;
@@ -418,6 +437,7 @@ pub const ResourceManager = struct {
             self.allocator.free(key);
         }
     }
+
 
     /// Release a reference to a texture
     pub fn releaseTexture(self: *ResourceManager, path: []const u8) !void {
@@ -431,6 +451,7 @@ pub const ResourceManager = struct {
         }
     }
 
+
     /// Release a reference to a shader
     pub fn releaseShader(self: *ResourceManager, name: []const u8) !void {
         const entry = self.shaders.getEntry(name) orelse return ResourceError.ResourceNotFound;
@@ -442,6 +463,7 @@ pub const ResourceManager = struct {
             self.allocator.free(key);
         }
     }
+
 
     // ============================================================
     // Private Helper Functions
