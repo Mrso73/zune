@@ -9,7 +9,6 @@ const Material = @import("material.zig").Material;
 const Texture = @import("texture.zig").Texture;
 const Shader = @import("shader.zig").Shader;
 
-
 pub const ResourceType = enum {
     Model,
     Mesh,
@@ -18,7 +17,6 @@ pub const ResourceType = enum {
     Shader,
 };
 
-
 pub const ResourceError = error{
     ResourceNotFound,
     ResourceAllocationFailed,
@@ -26,17 +24,16 @@ pub const ResourceError = error{
     ResourceAlreadyExists,
 };
 
-
 pub const ResourceManager = struct {
     allocator: std.mem.Allocator,
-    
+
     // Hashmaps to store resources by ID/path
     models: std.StringHashMap(*Model),
     meshes: std.StringHashMap(*Mesh),
     materials: std.StringHashMap(*Material),
     textures: std.StringHashMap(*Texture),
     shaders: std.StringHashMap(*Shader),
-    
+
 
     // ============================================================
     // Public API: Creation Functions
@@ -47,14 +44,13 @@ pub const ResourceManager = struct {
         const resource_manager_ptr = try allocator.create(ResourceManager);
         errdefer allocator.destroy(resource_manager_ptr);
 
-        resource_manager_ptr.* = ResourceManager {
+        resource_manager_ptr.* = ResourceManager{
             .allocator = allocator,
             .models = std.StringHashMap(*Model).init(allocator),
             .meshes = std.StringHashMap(*Mesh).init(allocator),
-            .materials = std.StringHashMap(*Material).init(allocator), 
+            .materials = std.StringHashMap(*Material).init(allocator),
             .shaders = std.StringHashMap(*Shader).init(allocator),
             .textures = std.StringHashMap(*Texture).init(allocator),
-
         };
         return resource_manager_ptr;
     }
@@ -74,11 +70,9 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-
         // Create a empty model struct
         const model = try Model.create(self.allocator);
         errdefer _ = model.release();
-
 
         try self.models.put(owned_name, model);
         return model;
@@ -86,9 +80,7 @@ pub const ResourceManager = struct {
 
 
     /// Create a mesh with the given parameters
-    pub fn createMesh(self: *ResourceManager, name: []const u8, vertices: []const f32, indices: []const u32, normals: ?[]f32) !*Mesh {
-
-
+    pub fn createMesh(self: *ResourceManager, name: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
 
         // Check if already exists
         if (self.meshes.get(name)) |existing| {
@@ -102,12 +94,11 @@ pub const ResourceManager = struct {
         errdefer self.allocator.free(owned_name);
 
         // Create the mesh creation function
-        const mesh = switch(normals != null) {
-            true => try Mesh.create(self.allocator, vertices, indices, normals),
-            false => try Mesh.create(self.allocator, vertices, indices, null),
+        const mesh = switch (has_normals) {
+            true => try Mesh.create(self.allocator, data, indices, true),
+            false => Mesh.create(self.allocator, data, indices, false),
         };
         errdefer _ = mesh.release();
-
 
         try self.meshes.put(owned_name, mesh);
         return mesh;
@@ -125,18 +116,15 @@ pub const ResourceManager = struct {
             return existing;
         }
 
-
         // Store in our maps
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
-        
 
         // Call the mesh creation function
         const mesh = try Mesh.createCube(self.allocator);
         errdefer _ = mesh.release();
 
-
-        try self.meshes.put(owned_name, mesh);   
+        try self.meshes.put(owned_name, mesh);
         return mesh;
     }
 
@@ -152,16 +140,13 @@ pub const ResourceManager = struct {
             return existing;
         }
 
-
         // Store in our maps
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
-        
 
         // call the mesh creation function
         const mesh = try Mesh.createQuad(self.allocator);
         errdefer _ = mesh.release();
-
 
         try self.meshes.put(owned_name, mesh);
         return mesh;
@@ -186,7 +171,6 @@ pub const ResourceManager = struct {
         const material = try Material.create(self.allocator, shader, color, texture);
         errdefer _ = material.release();
 
-
         try self.materials.put(owned_name, material);
         return material;
     }
@@ -210,10 +194,9 @@ pub const ResourceManager = struct {
         const texture = try Texture.createFromFile(self.allocator, path);
         errdefer _ = texture.release();
 
-
         try self.textures.put(owned_path, texture);
         return texture;
-    } 
+    }
 
 
     /// Create a shader from source code
@@ -234,7 +217,6 @@ pub const ResourceManager = struct {
         const shader = try Shader.create(self.allocator, vertex_source, fragment_source);
         errdefer _ = shader.release();
 
-
         try self.shaders.put(owned_name, shader);
         return shader;
     }
@@ -242,9 +224,8 @@ pub const ResourceManager = struct {
 
     /// Create a color shader with standard parameters
     pub fn createColorShader(self: *ResourceManager) !*Shader {
-
-         const color_shader = try self.createShader("color_shader",
-            // Vertex shader
+        const color_shader = try self.createShader("color_shader",
+        // Vertex shader
             \\#version 330 core
             \\layout (location=0) in vec3 aPos;
             \\uniform mat4 model;
@@ -253,8 +234,8 @@ pub const ResourceManager = struct {
             \\void main() {
             \\    gl_Position = projection * view * model * vec4(aPos, 1.0);
             \\}
-            ,
-            // Fragment shader
+        ,
+        // Fragment shader
             \\#version 330 core
             \\out vec4 FragColor;
             \\uniform vec4 color;
@@ -267,9 +248,8 @@ pub const ResourceManager = struct {
 
     /// Create a texture shader with standard parameters
     pub fn createTextureShader(self: *ResourceManager) !*Shader {
-
         const textured_shader = try self.createShader("texture_shader",
-            // Vertex shader
+        // Vertex shader
             \\#version 330 core
             \\layout (location=0) in vec3 aPos;
             \\layout (location=1) in vec2 aTexCoord;
@@ -279,8 +259,8 @@ pub const ResourceManager = struct {
             \\    gl_Position = projection * view * model * vec4(aPos, 1.0);
             \\    TexCoord = aTexCoord;
             \\}
-            ,
-            // Fragment shader
+        ,
+        // Fragment shader
             \\#version 330 core
             \\in vec2 TexCoord;
             \\out vec4 FragColor;
@@ -300,11 +280,10 @@ pub const ResourceManager = struct {
     // Public API: Destruction Function
     // ============================================================
 
-
     /// Clean up all resources and print debug info about remaining resources
     pub fn releaseAll(self: *ResourceManager) void {
         // std.debug.print("\n=== Resource Manager Cleanup Start ===\n", .{});
-        
+
         // Track counts for debug output
         var total_models: usize = 0;
         var total_meshes: usize = 0;
@@ -319,7 +298,7 @@ pub const ResourceManager = struct {
                 const model = entry.value_ptr.*;
                 const ref_count = model.ref_count.load(.monotonic);
                 total_models += 1;
-                
+
                 std.debug.print("Model '{s}' has {d} references\n", .{
                     entry.key_ptr.*,
                     ref_count,
@@ -330,6 +309,7 @@ pub const ResourceManager = struct {
             self.models.deinit();
         }
 
+
         // Clean up meshes
         {
             var iter = self.meshes.iterator();
@@ -337,7 +317,7 @@ pub const ResourceManager = struct {
                 const mesh = entry.value_ptr.*;
                 const ref_count = mesh.ref_count.load(.monotonic);
                 total_meshes += 1;
-                
+
                 std.debug.print("Mesh '{s}' has {d} references\n", .{
                     entry.key_ptr.*,
                     ref_count,
@@ -348,6 +328,7 @@ pub const ResourceManager = struct {
             self.meshes.deinit();
         }
 
+
         // Clean up materials
         {
             var iter = self.materials.iterator();
@@ -355,7 +336,7 @@ pub const ResourceManager = struct {
                 const material = entry.value_ptr.*;
                 const ref_count = material.ref_count.load(.monotonic);
                 total_materials += 1;
-                
+
                 std.debug.print("Material '{s}' has {d} references\n", .{
                     entry.key_ptr.*,
                     ref_count,
@@ -366,6 +347,7 @@ pub const ResourceManager = struct {
             self.materials.deinit();
         }
 
+
         // Clean up textures
         {
             var iter = self.textures.iterator();
@@ -373,7 +355,7 @@ pub const ResourceManager = struct {
                 const texture = entry.value_ptr.*;
                 const ref_count = texture.ref_count.load(.monotonic);
                 total_textures += 1;
-                
+
                 std.debug.print("Texture '{s}' has {d} references\n", .{
                     entry.key_ptr.*,
                     ref_count,
@@ -384,6 +366,7 @@ pub const ResourceManager = struct {
             self.textures.deinit();
         }
 
+
         // Clean up shaders
         {
             var iter = self.shaders.iterator();
@@ -391,7 +374,7 @@ pub const ResourceManager = struct {
                 const shader = entry.value_ptr.*;
                 const ref_count = shader.ref_count.load(.monotonic);
                 total_shaders += 1;
-                
+
                 std.debug.print("Shader '{s}' has {d} references\n", .{
                     entry.key_ptr.*,
                     ref_count,
@@ -402,6 +385,7 @@ pub const ResourceManager = struct {
             self.shaders.deinit();
         }
 
+
         // Print summary
         std.debug.print("\n=== Resource Manager Cleanup Summary ===\n", .{});
         std.debug.print("Models in manager: {d}\n", .{total_models});
@@ -409,9 +393,7 @@ pub const ResourceManager = struct {
         std.debug.print("Materials in manager: {d}\n", .{total_materials});
         std.debug.print("Textures in manager: {d}\n", .{total_textures});
         std.debug.print("Shaders in manager: {d}\n", .{total_shaders});
-        std.debug.print("Total resources in manager: {d}\n", .{
-            total_models + total_meshes + total_materials + total_textures + total_shaders
-        });
+        std.debug.print("Total resources in manager: {d}\n", .{total_models + total_meshes + total_materials + total_textures + total_shaders});
         std.debug.print("=== Resource Manager Cleanup Complete ===\n\n", .{});
 
         self.allocator.destroy(self);
@@ -427,7 +409,6 @@ pub const ResourceManager = struct {
             const key = entry.key_ptr.*;
             _ = self.models.remove(name);
             self.allocator.free(key);
-            
         }
     }
 
@@ -487,9 +468,6 @@ pub const ResourceManager = struct {
     // ============================================================
     // Private Helper Functions
     // ============================================================
-
-    
-
 
     // Type-specific resource name lookup functions
     //fn getModelName(self: *ResourceManager, resource: *Model) ?[]const u8 {}

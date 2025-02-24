@@ -186,6 +186,7 @@ pub const Input = struct {
         _ = c.glfwSetCursorPosCallback(window_handle, cursorPosCallback);
     }
     
+    
     // Callback implementations
     fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
         _ = scancode;
@@ -204,6 +205,7 @@ pub const Input = struct {
         self.current_keys.put(key_code, state) catch return;
     }
     
+
     fn mouseButtonCallback(window: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
         _ = mods;
         
@@ -218,6 +220,7 @@ pub const Input = struct {
         
         self.current_mouse.put(mouse_button, state) catch return;
     }
+
 
     fn cursorPosCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
         const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
@@ -253,6 +256,7 @@ pub const Input = struct {
         }
     }
     
+
     // Key state checking
     pub fn isKeyPressed(self: *const Input, key: KeyCode) bool {
         return if (self.current_keys.get(key)) |state|
@@ -261,6 +265,7 @@ pub const Input = struct {
             false;
     }
     
+
     pub fn isKeyHeld(self: *const Input, key: KeyCode) bool {
         return if (self.current_keys.get(key)) |state|
             state == .held
@@ -268,6 +273,7 @@ pub const Input = struct {
             false;
     }
     
+
     pub fn isKeyReleased(self: *const Input, key: KeyCode) bool {
         return if (self.current_keys.get(key)) |state|
             state == .released
@@ -275,6 +281,7 @@ pub const Input = struct {
             false;
     }
     
+
     // Mouse state checking
     pub fn isMouseButtonPressed(self: *const Input, button: MouseButton) bool {
         return if (self.current_mouse.get(button)) |state|
@@ -283,6 +290,7 @@ pub const Input = struct {
             false;
     }
     
+
     pub fn isMouseButtonHeld(self: *const Input, button: MouseButton) bool {
         return if (self.current_mouse.get(button)) |state|
             state == .held
@@ -290,14 +298,21 @@ pub const Input = struct {
             false;
     }
     
+
     pub fn getMousePosition(self: *const Input) MousePosition {
         return self.mouse_pos;
     }
     
+
     pub fn getMouseDelta(self: *const Input) MousePosition {
         return self.mouse_delta;
     }
     
+
+    // ============================================================
+    // Public API: Destruction Function
+    // ============================================================
+
     pub fn release(self: *Input) void {
         self.current_keys.deinit();
         self.previous_keys.deinit();

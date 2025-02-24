@@ -107,6 +107,8 @@ pub const Texture = struct {
         var w: i32 = 0;
         var h: i32 = 0;
         var n: i32 = 0;
+        
+        c.stbi_set_flip_vertically_on_load(1);
 
         // Force image to load with 4 channels (RGBA)
         const data = c.stbi_load(c_path.ptr, &w, &h, &n, 4);

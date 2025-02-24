@@ -32,6 +32,10 @@ pub const Renderer = struct {
     }
 
 
+    // ============================================================
+    // Public API: Operational Functions
+    // ============================================================
+
     pub fn clear(self: *Renderer) void {
         _ = self;
         c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
