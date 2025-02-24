@@ -4,69 +4,39 @@ const std = @import("std");
 const c = @import("../bindings/c.zig");
 const err = @import("../core/gl.zig");
 
-
 pub const Mesh = struct {
     vao: c.GLuint,
     vbo: c.GLuint,
     ebo: c.GLuint,
     index_count: usize,
-    
+
     ref_count: std.atomic.Value(u32),
     allocator: std.mem.Allocator,
-
 
     // ============================================================
     // Public API: Creation Functions
     // ============================================================
 
-    pub fn create(allocator: std.mem.Allocator, vertices: []const f32, indices: []const u32, normals: ?[]const f32) !*Mesh {
-        // Validate input: vertices are already interleaved (pos + tex)
-        if (vertices.len % 5 != 0) return error.InvalidVertexData;
-        const vertex_count = vertices.len / 5;
+    pub fn create(allocator: std.mem.Allocator, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
 
-        // Validate normals if present
-        const has_normals = if (normals) |n| blk: {
-            if (n.len != vertex_count * 3) return error.InvalidNormalData;
-            break :blk true;
-        } else false;
-
-        // Determine layout
+        // Determine layout based on has_normals flag
         const layout = if (has_normals)
             VertexLayout.PosNormTex()
         else
             VertexLayout.PosTex();
 
-        // Calculate total floats per vertex and allocate buffer
-        const floats_per_vertex = 5 + // Position + UV (already interleaved)
-            if (has_normals) @as(usize, 3) else 0; // Normals
+        // Calculate expected floats per vertex
+        const floats_per_vertex = if (has_normals)
+            @as(usize, 8) // pos(3) + norm(3) + tex(2)
+        else
+            @as(usize, 5); // pos(3) + tex(2)
 
-        var interleaved_data = try allocator.alloc(f32, vertex_count * floats_per_vertex);
-        defer allocator.free(interleaved_data);
+        // Validate input data length
+        if (data.len % floats_per_vertex != 0) return error.InvalidVertexData;
 
-        // Copy the already interleaved vertex data
-        for (0..vertex_count) |i| {
-            const src_offset = i * 5;  // Source has 5 floats per vertex
-            const dest_offset = i * floats_per_vertex;
-
-            // Copy position and texture coordinates (already interleaved)
-            @memcpy(
-                interleaved_data[dest_offset..][0..5],
-                vertices[src_offset..][0..5],
-            );
-
-            // Add normals if present
-            if (normals) |nrmls| {
-                const norm_src = i * 3;
-                @memcpy(
-                    interleaved_data[dest_offset + 5..][0..3],
-                    nrmls[norm_src..][0..3],
-                );
-            }
-        }
-
-        return createInternal(allocator, interleaved_data, indices, layout);
+        // Call createInternal directly since data is already properly formatted
+        return createInternal(allocator, data, indices, layout);
     }
-
 
     /// Mesh creation helper function
     pub fn createQuad(allocator: std.mem.Allocator) !*Mesh {
@@ -74,10 +44,10 @@ pub const Mesh = struct {
         // Quad vertices: 4 points with positions (x,y,z) and tex coords (u,v)
         const vertices = [_]f32{
             // Positions          // TexCoords
-            -0.5, -0.5, 0.0,     0.0, 0.0, // Bottom-left
-             0.5, -0.5, 0.0,     1.0, 0.0, // Bottom-right
-             0.5,  0.5, 0.0,     1.0, 1.0, // Top-right
-            -0.5,  0.5, 0.0,     0.0, 1.0, // Top-left
+            -0.5, -0.5, 0.0, 0.0, 0.0, // Bottom-left
+            0.5, -0.5, 0.0, 1.0, 0.0, // Bottom-right
+            0.5, 0.5, 0.0, 1.0, 1.0, // Top-right
+            -0.5, 0.5, 0.0, 0.0, 1.0, // Top-left
         };
 
         const indices = [_]u32{
@@ -88,70 +58,67 @@ pub const Mesh = struct {
         return Mesh.create(allocator, &vertices, &indices, null);
     }
 
-
     /// Mesh creation helper function
     pub fn createCube(allocator: std.mem.Allocator) !*Mesh {
         const vertices = [_]f32{
             // Positions          // Texture coords
 
             // Front face
-            -0.5, -0.5,  0.5,    0.0, 0.0, // Bottom-left
-            0.5, -0.5,  0.5,    1.0, 0.0, // Bottom-right
-            0.5,  0.5,  0.5,    1.0, 1.0, // Top-right
-            -0.5,  0.5,  0.5,    0.0, 1.0, // Top-left
+            -0.5, -0.5, 0.5, 0.0, 0.0, // Bottom-left
+            0.5, -0.5, 0.5, 1.0, 0.0, // Bottom-right
+            0.5, 0.5, 0.5, 1.0, 1.0, // Top-right
+            -0.5, 0.5, 0.5, 0.0, 1.0, // Top-left
             // Back face
-            -0.5, -0.5, -0.5,    1.0, 0.0, // Bottom-right
-            0.5, -0.5, -0.5,    0.0, 0.0, // Bottom-left
-            0.5,  0.5, -0.5,    0.0, 1.0, // Top-left
-            -0.5,  0.5, -0.5,    1.0, 1.0, // Top-right
+            -0.5, -0.5, -0.5, 1.0, 0.0, // Bottom-right
+            0.5, -0.5, -0.5, 0.0, 0.0, // Bottom-left
+            0.5, 0.5, -0.5, 0.0, 1.0, // Top-left
+            -0.5, 0.5, -0.5, 1.0, 1.0, // Top-right
             // Top face
-            -0.5,  0.5, -0.5,    0.0, 0.0, // Bottom-left
-            0.5,  0.5, -0.5,    1.0, 0.0, // Bottom-right
-            0.5,  0.5,  0.5,    1.0, 1.0, // Top-right
-            -0.5,  0.5,  0.5,    0.0, 1.0, // Top-left
+            -0.5, 0.5, -0.5, 0.0, 0.0, // Bottom-left
+            0.5, 0.5, -0.5, 1.0, 0.0, // Bottom-right
+            0.5, 0.5, 0.5, 1.0, 1.0, // Top-right
+            -0.5, 0.5, 0.5, 0.0, 1.0, // Top-left
             // Bottom face
-            -0.5, -0.5, -0.5,    0.0, 0.0, // Top-left
-            0.5, -0.5, -0.5,    1.0, 0.0, // Top-right
-            0.5, -0.5,  0.5,    1.0, 1.0, // Bottom-right
-            -0.5, -0.5,  0.5,    0.0, 1.0, // Bottom-left
+            -0.5, -0.5, -0.5, 0.0, 0.0, // Top-left
+            0.5, -0.5, -0.5, 1.0, 0.0, // Top-right
+            0.5, -0.5, 0.5, 1.0, 1.0, // Bottom-right
+            -0.5, -0.5, 0.5, 0.0, 1.0, // Bottom-left
             // Right face
-            0.5, -0.5, -0.5,    0.0, 0.0, // Bottom-left
-            0.5,  0.5, -0.5,    1.0, 0.0, // Top-left
-            0.5,  0.5,  0.5,    1.0, 1.0, // Top-right
-            0.5, -0.5,  0.5,    0.0, 1.0, // Bottom-right
+            0.5, -0.5, -0.5, 0.0, 0.0, // Bottom-left
+            0.5, 0.5, -0.5, 1.0, 0.0, // Top-left
+            0.5, 0.5, 0.5, 1.0, 1.0, // Top-right
+            0.5, -0.5, 0.5, 0.0, 1.0, // Bottom-right
             // Left face
-            -0.5, -0.5, -0.5,    1.0, 0.0, // Bottom-right
-            -0.5,  0.5, -0.5,    1.0, 1.0, // Top-right
-            -0.5,  0.5,  0.5,    0.0, 1.0, // Top-left
-            -0.5, -0.5,  0.5,    0.0, 0.0  // Bottom-left
+            -0.5, -0.5, -0.5, 1.0, 0.0, // Bottom-right
+            -0.5, 0.5, -0.5, 1.0, 1.0, // Top-right
+            -0.5, 0.5, 0.5, 0.0, 1.0, // Top-left
+            -0.5, -0.5, 0.5, 0.0, 0.0, // Bottom-left
         };
 
         const indices = [_]u32{
-            0,  1,  2,  2,  3,  0,  // Front
-            4,  5,  6,  6,  7,  4,  // Back
-            8,  9,  10, 10, 11, 8,  // Top
+            0, 1, 2, 2, 3, 0, // Front
+            4, 5, 6, 6, 7, 4, // Back
+            8, 9, 10, 10, 11, 8, // Top
             12, 13, 14, 14, 15, 12, // Bottom
             16, 17, 18, 18, 19, 16, // Right
-            20, 21, 22, 22, 23, 20  // Left
+            20, 21, 22, 22, 23, 20, // Left
         };
 
-        return Mesh.create(allocator, &vertices, &indices, null);
+        return Mesh.create(allocator, &vertices, &indices, false);
     }
-
 
     /// Mesh creation helper function
     pub fn createTriangle(allocator: std.mem.Allocator) !*Mesh {
         // Triangle vertices: 3 points with positions (x,y,z)
         const vertices = [_]f32{
-             0.0,  0.5, 0.0, // Top
+            0.0, 0.5, 0.0, // Top
             -0.5, -0.5, 0.0, // Left
-             0.5, -0.5, 0.0, // Right
+            0.5, -0.5, 0.0, // Right
         };
-        const indices = [_]u32{0, 1, 2};
+        const indices = [_]u32{ 0, 1, 2 };
 
         return Mesh.create(allocator, &vertices, &indices, null);
     }
-
 
     // ============================================================
     // Public API: Operational Functions
@@ -161,18 +128,15 @@ pub const Mesh = struct {
         _ = self.ref_count.fetchAdd(1, .monotonic);
     }
 
-
     pub fn bind(self: *Mesh) void {
         c.glBindVertexArray(self.vao);
         err.checkGLError("glBindVertexArray");
     }
 
-
     pub fn draw(self: *Mesh) void {
         c.glDrawElements(c.GL_TRIANGLES, @intCast(self.index_count), c.GL_UNSIGNED_INT, null);
         err.checkGLError("glDrawElements");
     }
-
 
     // ============================================================
     // Public API: Destruction Function
@@ -181,7 +145,7 @@ pub const Mesh = struct {
     // Decrement reference count and free if no more references
     pub fn release(self: *Mesh) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
-        
+
         if (prev == 0) {
             @panic("Double release of Mesh detected"); // already freed
         } else if (prev == 1) {
@@ -189,10 +153,9 @@ pub const Mesh = struct {
             self.deinit();
             self.allocator.destroy(self);
         }
-        
+
         return prev;
     }
-
 
     // ============================================================
     // Private Helper Functions
@@ -269,7 +232,6 @@ pub const Mesh = struct {
         return mesh_ptr;
     }
 
-
     // Clean up OpenGL resources
     fn deinit(self: *Mesh) void {
         c.glDeleteVertexArrays(1, &self.vao);
@@ -278,7 +240,6 @@ pub const Mesh = struct {
         err.checkGLError("Mesh cleanup");
     }
 };
-
 
 pub const VertexLayout = struct {
     descriptors: []const VertexAttributeDescriptor,
@@ -323,7 +284,6 @@ pub const VertexLayout = struct {
             .{ .attribute_type = .Position, .data_type = c.GL_FLOAT },
         });
     }
-
 
     // Get the size of a specific attribute type
     pub fn getAttributeSize(attr_type: AttributeType) usize {
