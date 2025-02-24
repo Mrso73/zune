@@ -102,10 +102,10 @@ pub const ResourceManager = struct {
         errdefer self.allocator.free(owned_name);
 
         // Create the mesh creation function
-        const mesh = switch (normals) {
-            null => try Mesh.create(self.allocator, vertices, indices, VertexLayout.PosTex()),
-            else => | norm | Mesh.createWithNormals(self.allocator, vertices, norm, indices)
-        }; 
+        const mesh = switch(normals != null) {
+            true => try Mesh.create(self.allocator, vertices, indices, normals),
+            false => try Mesh.create(self.allocator, vertices, indices, null),
+        };
         errdefer _ = mesh.release();
 
 
