@@ -2,10 +2,19 @@ const std = @import("std");
 const c = @import("../bindings/c.zig");
 const Window = @import("window.zig").Window;
 
-
 pub const MousePosition = struct {
     x: f64,
     y: f64,
+};
+
+pub const MouseButton = enum(c_int) {
+    left = c.GLFW_MOUSE_BUTTON_LEFT,
+    right = c.GLFW_MOUSE_BUTTON_RIGHT,
+    middle = c.GLFW_MOUSE_BUTTON_MIDDLE,
+
+    pub fn fromGLFW(button: c_int) MouseButton {
+        return @enumFromInt(button);
+    }
 };
 
 // Core input types
@@ -112,16 +121,6 @@ pub const KeyCode = enum(c_int) {
     }
 };
 
-pub const MouseButton = enum(c_int) {
-    left = c.GLFW_MOUSE_BUTTON_LEFT,
-    right = c.GLFW_MOUSE_BUTTON_RIGHT,
-    middle = c.GLFW_MOUSE_BUTTON_MIDDLE,
-    
-    pub fn fromGLFW(button: c_int) MouseButton {
-        return @enumFromInt(button);
-    }
-};
-
 pub const InputState = enum {
     released,
     pressed,
@@ -132,18 +131,17 @@ pub const InputState = enum {
 pub const Input = struct {
     allocator: std.mem.Allocator,
     window: *Window,
-    
+
     // State tracking
     current_keys: std.AutoHashMap(KeyCode, InputState),
     previous_keys: std.AutoHashMap(KeyCode, InputState),
     current_mouse: std.AutoHashMap(MouseButton, InputState),
     previous_mouse: std.AutoHashMap(MouseButton, InputState),
-    
+
     // Mouse position tracking
     mouse_pos: MousePosition,
     mouse_delta: MousePosition,
     previous_mouse_pos: MousePosition,
-    
 
     // ============================================================
     // Public API: Creation Functions
@@ -151,7 +149,7 @@ pub const Input = struct {
 
     pub fn create(allocator: std.mem.Allocator, window: *Window) !*Input {
         const input_ptr = try allocator.create(Input);
-        
+
         input_ptr.* = .{
             .allocator = allocator,
             .window = window,
@@ -163,68 +161,64 @@ pub const Input = struct {
             .mouse_delta = .{ .x = 0, .y = 0 },
             .previous_mouse_pos = .{ .x = 0, .y = 0 },
         };
-        
+
         try input_ptr.setupCallbacks();
 
         return input_ptr;
     }
 
-
     // ============================================================
     // Public API: Operational Functions
     // ============================================================
-    
+
     fn setupCallbacks(self: *Input) !void {
         const window_handle = self.window.handle;
-        
+
         // Store self pointer in window user pointer for callbacks
         c.glfwSetWindowUserPointer(window_handle, self);
-        
+
         // Set up key callback
         _ = c.glfwSetKeyCallback(window_handle, keyCallback);
         _ = c.glfwSetMouseButtonCallback(window_handle, mouseButtonCallback);
         _ = c.glfwSetCursorPosCallback(window_handle, cursorPosCallback);
     }
-    
-    
+
     // Callback implementations
     fn keyCallback(window: ?*c.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
         _ = scancode;
         _ = mods;
-        
+
         const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
         const key_code = KeyCode.fromGLFW(key);
-        
+
         const state = switch (action) {
             c.GLFW_PRESS => InputState.pressed,
             c.GLFW_RELEASE => InputState.released,
             c.GLFW_REPEAT => InputState.held,
             else => return,
         };
-        
+
         self.current_keys.put(key_code, state) catch return;
     }
-    
 
     fn mouseButtonCallback(window: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
         _ = mods;
-        
+
         const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
         const mouse_button = MouseButton.fromGLFW(button);
-        
+
         const state = switch (action) {
             c.GLFW_PRESS => InputState.pressed,
             c.GLFW_RELEASE => InputState.released,
             else => return,
         };
-        
+
         self.current_mouse.put(mouse_button, state) catch return;
     }
 
-
     fn cursorPosCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
         const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
-        
+
         self.previous_mouse_pos = self.mouse_pos;
         self.mouse_pos = .{ .x = xpos, .y = ypos };
         self.mouse_delta = .{
@@ -232,30 +226,59 @@ pub const Input = struct {
             .y = self.mouse_pos.y - self.previous_mouse_pos.y,
         };
     }
-    
 
     pub fn update(self: *Input) !void {
-        // Swap previous and current states
-        std.mem.swap(
-            std.AutoHashMap(KeyCode, InputState),
-            &self.previous_keys,
-            &self.current_keys,
-        );
-        std.mem.swap(
-            std.AutoHashMap(MouseButton, InputState),
-            &self.previous_mouse,
-            &self.current_mouse,
-        );
-        
-        // Update held states
+        // Clear the previous states first
+        self.previous_keys.clearRetainingCapacity();
+        self.previous_mouse.clearRetainingCapacity();
+
+        // Copy current states to previous states
         var key_it = self.current_keys.iterator();
         while (key_it.next()) |entry| {
-            if (entry.value_ptr.* == .pressed) {
-                entry.value_ptr.* = .held;
+            try self.previous_keys.put(entry.key_ptr.*, entry.value_ptr.*);
+        }
+
+        var mouse_it = self.current_mouse.iterator();
+        while (mouse_it.next()) |entry| {
+            try self.previous_mouse.put(entry.key_ptr.*, entry.value_ptr.*);
+        }
+
+        // Process key state transitions
+        key_it = self.current_keys.iterator();
+        var keys_to_remove = std.ArrayList(KeyCode).init(self.allocator);
+        defer keys_to_remove.deinit();
+
+        while (key_it.next()) |entry| {
+            switch (entry.value_ptr.*) {
+                .pressed => entry.value_ptr.* = .held, // Change pressed to held
+                .released => try keys_to_remove.append(entry.key_ptr.*), // Mark released keys for removal
+                .held => {}, // Keep the held keys
             }
         }
+
+        // Remove keys that were released
+        for (keys_to_remove.items) |key| {
+            _ = self.current_keys.remove(key);
+        }
+
+        // Process mouse button state transitions
+        mouse_it = self.current_mouse.iterator();
+        var buttons_to_remove = std.ArrayList(MouseButton).init(self.allocator);
+        defer buttons_to_remove.deinit();
+
+        while (mouse_it.next()) |entry| {
+            switch (entry.value_ptr.*) {
+                .pressed => entry.value_ptr.* = .held, // Change pressed to held
+                .released => try buttons_to_remove.append(entry.key_ptr.*), // Mark released buttons for removal
+                .held => {}, // Keep the held buttons
+            }
+        }
+
+        // Remove buttons that were released
+        for (buttons_to_remove.items) |button| {
+            _ = self.current_mouse.remove(button);
+        }
     }
-    
 
     // Key state checking
     pub fn isKeyPressed(self: *const Input, key: KeyCode) bool {
@@ -264,7 +287,6 @@ pub const Input = struct {
         else
             false;
     }
-    
 
     pub fn isKeyHeld(self: *const Input, key: KeyCode) bool {
         return if (self.current_keys.get(key)) |state|
@@ -272,15 +294,20 @@ pub const Input = struct {
         else
             false;
     }
-    
 
     pub fn isKeyReleased(self: *const Input, key: KeyCode) bool {
-        return if (self.current_keys.get(key)) |state|
-            state == .released
-        else
-            false;
+        // A key is "released" if it was in the last keys map
+        // but is not in the current map or has a released state
+        if (self.previous_keys.get(key)) |prev_state| {
+            if (prev_state == .pressed or prev_state == .held) {
+                return if (self.current_keys.get(key)) |curr_state|
+                    curr_state == .released
+                else
+                    true; // Key was in last map but not in current
+            }
+        }
+        return false;
     }
-    
 
     // Mouse state checking
     pub fn isMouseButtonPressed(self: *const Input, button: MouseButton) bool {
@@ -289,7 +316,6 @@ pub const Input = struct {
         else
             false;
     }
-    
 
     pub fn isMouseButtonHeld(self: *const Input, button: MouseButton) bool {
         return if (self.current_mouse.get(button)) |state|
@@ -297,17 +323,27 @@ pub const Input = struct {
         else
             false;
     }
-    
+
+    pub fn isMouseButtonReleased(self: *const Input, button: MouseButton) bool {
+        // Similar logic to isKeyReleased
+        if (self.previous_mouse.get(button)) |prev_state| {
+            if (prev_state == .pressed or prev_state == .held) {
+                return if (self.current_mouse.get(button)) |curr_state|
+                    curr_state == .released
+                else
+                    true; // Button was in last map but not in current
+            }
+        }
+        return false;
+    }
 
     pub fn getMousePosition(self: *const Input) MousePosition {
         return self.mouse_pos;
     }
-    
 
     pub fn getMouseDelta(self: *const Input) MousePosition {
         return self.mouse_delta;
     }
-    
 
     // ============================================================
     // Public API: Destruction Function
