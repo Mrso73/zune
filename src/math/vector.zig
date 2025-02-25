@@ -2,8 +2,8 @@ const std = @import("std");
 
 /// Vector with 2 components
 pub const Vec2 = struct {
-    x: f32,
-    y: f32,
+    x: f32 = 0,
+    y: f32 = 0,
 
     const Self = @This();
 
@@ -45,9 +45,9 @@ pub const Vec2 = struct {
 
 /// Vector with 3 components
 pub const Vec3 = struct {
-    x: f32,
-    y: f32,
-    z: f32,
+    x: f32 = 0,
+    y: f32 = 0,
+    z: f32 = 0,
 
     const Self = @This();
 
@@ -63,6 +63,8 @@ pub const Vec3 = struct {
     pub fn zero() Self {
         return .{ .x = 0, .y = 0, .z = 0 };
     }
+
+
 
 
     // ============================================================
