@@ -34,23 +34,21 @@ pub fn main() !void {
     var input = try zune.core.Input.create(allocator, window);
     defer input.release();
 
-
     // --- Set Variables --- //
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
-    perspective_camera.setPosition(.{ .x = 0.0, .y = 3.0, .z = 15.0});
-    perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
+    perspective_camera.setPosition(.{ .x = 0.0, .y = 3.0, .z = 15.0 });
+    perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0 });
 
     window.centerWindow();
     window.setCursorMode(.disabled);
-
 
     // --- Create the model --- //
 
     var txtr_shader = try zune.graphics.Shader.createTextureShader(allocator);
     defer _ = txtr_shader.release();
-    
+
     var texture = try zune.graphics.Texture.createFromFile(allocator, "examples/game-example/txtr.png");
     defer _ = texture.release();
 
@@ -65,8 +63,6 @@ pub fn main() !void {
 
     try cube_model.addMeshMaterial(cube_mesh, material);
 
-
-
     // --- Setup the ECS system --- //
 
     // Register components
@@ -74,73 +70,50 @@ pub fn main() !void {
     try registry.registerComponent(zune.ecs.components.ModelComponent);
     try registry.registerComponent(Velocity);
 
+    // Spawn 1 entity
+    const entity = try registry.createEntity();
 
-    // Create random generater
-    var prng = std.Random.DefaultPrng.init(0);
-    var random = prng.random();
+    const transform = zune.ecs.components.TransformComponent.identity();
 
+    // Random position
+    try registry.addComponent(entity, transform);
 
-    // Spawn 100 particle entities
-    var i: usize = 0;
-    while (i < 100) : (i += 1) {
-        const entity = try registry.createEntity();
+    // Random velocity
+    try registry.addComponent(entity, Velocity{
+        .x = 0,
+        .y = 0,
+        .z = 0,
+    });
 
-        var transform = zune.ecs.components.TransformComponent.identity();
-        transform.setPosition(
-            random.float(f32),
-            random.float(f32),
-            0.0,
-        );
-
-        // Random position
-        try registry.addComponent(entity, transform);
-
-        // Random velocity
-        try registry.addComponent(entity, Velocity{
-            .x = (random.float(f32) - 0.5) * 0.2,
-            .y = (random.float(f32) - 0.5) * 0.2,
-        });
-
-        // Set Model to render
-        try registry.addComponent(entity, zune.ecs.components.ModelComponent.init(cube_model));
-    }
-
-
+    // Set Model to render
+    try registry.addComponent(entity, zune.ecs.components.ModelComponent.init(cube_model));
 
     // --- Main Loop --- //
-    
+
     while (!window.shouldClose()) {
         try input.update();
 
-        // ==== Process Input ==== \\     
-        //const mouse_pos = input.getMousePosition();   
+        // ==== Process Input ==== \\
+        //const mouse_pos = input.getMousePosition();
 
-        try updatePhysics(registry);
+        try playerMovementSystem(registry, input);
 
         renderer.clear();
-        
+
         try render(perspective_camera, registry);
 
         window.pollEvents();
-        window.swapBuffers();   
+        window.swapBuffers();
     }
-
-
 }
-
-
 
 const Velocity = struct {
     x: f32,
     y: f32,
+    z: f32,
 };
 
-
-
-
-
-fn updatePhysics(registry: *zune.ecs.Registry) !void {
-
+fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !void {
     var query = try registry.query(struct {
         transform: *zune.ecs.components.TransformComponent,
         velocity: *Velocity,
@@ -149,14 +122,51 @@ fn updatePhysics(registry: *zune.ecs.Registry) !void {
     while (try query.next()) |components| {
 
         // Update position
-        components.transform.position[0] += components.velocity.x;
-        components.transform.position[1] += components.velocity.y;
+        if (input.isKeyHeld(.KEY_W) or input.isKeyPressed(.KEY_W)) {
+            //std.debug.print("W\n", .{});
+            components.velocity.z = -0.05;
+            components.transform.position[2] += components.velocity.z;
+        }
 
-        // rotate model
-        components.transform.rotate(0.01, 0.01, 0.0);
+        if (input.isKeyHeld(.KEY_S) or input.isKeyPressed(.KEY_S)) {
+            //std.debug.print("S\n", .{});
+            components.velocity.z = 0.05;
+            components.transform.position[2] += components.velocity.z;
+        }
+
+        if (input.isKeyHeld(.KEY_D) or input.isKeyPressed(.KEY_D)) {
+            //std.debug.print("D\n", .{});
+            components.velocity.x = 0.05;
+            components.transform.position[0] += components.velocity.x;
+        }
+
+        if (input.isKeyHeld(.KEY_A) or input.isKeyPressed(.KEY_A)) {
+            //std.debug.print("A\n", .{});
+            components.velocity.x = -0.05;
+            components.transform.position[0] += components.velocity.x;
+        }
+
+        //if (input.isKeyReleased(.KEY_W)) {
+        //    std.debug.print("RELEASED W\n", .{});
+        //    components.velocity.x = 0;
+        //}
+
+        //if (input.isKeyReleased(.KEY_S)) {
+        //    std.debug.print("RELEASED S\n", .{});
+        //    components.velocity.x = 0;
+        //}
+
+        //if (input.isKeyReleased(.KEY_D)) {
+        //    std.debug.print("RELEASED D\n", .{});
+        //    components.velocity.z = 0;
+        //}
+
+        //if (input.isKeyReleased(.KEY_A)) {
+        //    std.debug.print("RELEASED A\n", .{});
+        //    components.velocity.z = 0;
+        //}
     }
 }
-
 
 pub fn render(camera: zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
     // Query for entities with all required components
