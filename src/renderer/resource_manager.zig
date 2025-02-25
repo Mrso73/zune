@@ -96,7 +96,7 @@ pub const ResourceManager = struct {
         // Create the mesh creation function
         const mesh = switch (has_normals) {
             true => try Mesh.create(self.allocator, data, indices, true),
-            false => Mesh.create(self.allocator, data, indices, false),
+            false => try Mesh.create(self.allocator, data, indices, false),
         };
         errdefer _ = mesh.release();
 
