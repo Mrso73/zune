@@ -91,12 +91,18 @@ pub fn main() !void {
     // --- Main Loop --- //
 
     while (!window.shouldClose()) {
+
+        
         try input.update();
+
+        
 
         // ==== Process Input ==== \\
         //const mouse_pos = input.getMousePosition();
-
         try playerMovementSystem(registry, input);
+        
+
+        
 
         renderer.clear();
 
@@ -122,49 +128,25 @@ fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !
     while (try query.next()) |components| {
 
         // Update position
-        if (input.isKeyHeld(.KEY_W) or input.isKeyPressed(.KEY_W)) {
-            //std.debug.print("W\n", .{});
+        if (input.isKeyHeld(.KEY_W)) {
             components.velocity.z = -0.05;
             components.transform.position[2] += components.velocity.z;
         }
 
-        if (input.isKeyHeld(.KEY_S) or input.isKeyPressed(.KEY_S)) {
-            //std.debug.print("S\n", .{});
+        if (input.isKeyHeld(.KEY_S)) {
             components.velocity.z = 0.05;
             components.transform.position[2] += components.velocity.z;
         }
 
-        if (input.isKeyHeld(.KEY_D) or input.isKeyPressed(.KEY_D)) {
-            //std.debug.print("D\n", .{});
+        if (input.isKeyHeld(.KEY_D)) {
             components.velocity.x = 0.05;
             components.transform.position[0] += components.velocity.x;
         }
 
-        if (input.isKeyHeld(.KEY_A) or input.isKeyPressed(.KEY_A)) {
-            //std.debug.print("A\n", .{});
+        if (input.isKeyHeld(.KEY_A)) {
             components.velocity.x = -0.05;
             components.transform.position[0] += components.velocity.x;
         }
-
-        //if (input.isKeyReleased(.KEY_W)) {
-        //    std.debug.print("RELEASED W\n", .{});
-        //    components.velocity.x = 0;
-        //}
-
-        //if (input.isKeyReleased(.KEY_S)) {
-        //    std.debug.print("RELEASED S\n", .{});
-        //    components.velocity.x = 0;
-        //}
-
-        //if (input.isKeyReleased(.KEY_D)) {
-        //    std.debug.print("RELEASED D\n", .{});
-        //    components.velocity.z = 0;
-        //}
-
-        //if (input.isKeyReleased(.KEY_A)) {
-        //    std.debug.print("RELEASED A\n", .{});
-        //    components.velocity.z = 0;
-        //}
     }
 }
 
