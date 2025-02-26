@@ -32,6 +32,20 @@ pub const Vec2 = struct {
         };
     }
 
+    pub fn subtract(self: Self, other: Self) Self {
+        return .{
+            .x = self.x - other.x,
+            .y = self.y - other.y,
+        };
+    }
+
+    pub fn inv(self: Self) Self {
+        return .{
+            .x = -self.x,
+            .y = -self.y,
+        };
+    }
+
     pub fn length(self: Self) f32 {
         return @sqrt(self.lengthSquared());
     }
@@ -65,8 +79,6 @@ pub const Vec3 = struct {
     }
 
 
-
-
     // ============================================================
     // Public API: Operational Functions
     // ============================================================
@@ -93,6 +105,14 @@ pub const Vec3 = struct {
             .x = self.x / len,
             .y = self.y / len,
             .z = self.z / len,
+        };
+    }
+
+    pub fn inv(self: Self) Self {
+        return .{
+            .x = -self.x,
+            .y = -self.y,
+            .z = -self.z,
         };
     }
 
