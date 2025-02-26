@@ -93,6 +93,10 @@ pub fn main() !void {
 
         // ==== Process Input ==== \\
         //const mouse_pos = input.getMousePosition();
+        if (window.input.?.isKeyPressed(.KEY_ESCAPE)) {
+            window.setTitle("miauw");
+        }
+
         if (window.input.?.isKeyReleased(.KEY_ESCAPE)) break;
 
         try playerMovementSystem(registry, window.input.?);
@@ -141,19 +145,11 @@ fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !
             components.transform.position[0] += components.velocity.x;
         }
 
-        if (input.isKeyPressed(.KEY_J)) {
-            std.debug.print("J +++\n", .{});
-        }
-
-        if (input.isKeyReleased(.KEY_J)) {
-            std.debug.print("J ---\n", .{});
-        }
-
-        if (input.wasKeyJustPressed(.KEY_K, 0)) {
+        if (input.wasKeyJustPressed(.KEY_K, 60)) {
             std.debug.print("K +++\n", .{});
         }
 
-        if (input.wasKeyJustReleased(.KEY_K, 0)) {
+        if (input.wasKeyJustReleased(.KEY_K, 60)) {
             std.debug.print("K ---\n", .{});
         }
     }

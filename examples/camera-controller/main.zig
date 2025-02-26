@@ -32,15 +32,9 @@ pub fn main() !void {
     defer window.release();
 
 
-    // setup input manager
-    var input = try zune.core.Input.create(allocator, window);
-    defer input.release();
-
-
     // create a renderer
     var renderer = try zune.graphics.Renderer.create(allocator);
     defer renderer.release();
-
 
     const window_size = window.getSize();
     renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
@@ -52,7 +46,7 @@ pub fn main() !void {
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
 
-    const initial_mouse_pos = input.getMousePosition();
+    const initial_mouse_pos = window.input.?.getMousePosition();
     var camera_controller = zune.graphics.CameraMouseController.init(&perspective_camera,
     @as(f32, @floatCast(initial_mouse_pos.x)), @as(f32, @floatCast(initial_mouse_pos.y)));
     
@@ -106,7 +100,6 @@ pub fn main() !void {
 
         // ==== Update Variables ==== \\  
         time.update();
-        try input.update();
 
         // Get delta time
         const dt = time.getDelta();
@@ -115,11 +108,11 @@ pub fn main() !void {
 
 
         // ==== Process Input ==== \\     
-        const mouse_pos = input.getMousePosition();   
+        const mouse_pos = window.input.?.getMousePosition();   
         camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), dt);
 
         // Check input states
-        if (input.isKeyHeld(.KEY_SPACE)) {
+        if (window.input.?.isKeyHeld(.KEY_SPACE)) {
             std.debug.print("press", .{});
         }
 
@@ -150,7 +143,7 @@ pub fn main() !void {
         try perspective_camera.drawModel(cube_model_2, &transform_2.world_matrix);
     
 
-        window.pollEvents();
+        try window.pollEvents();
         window.swapBuffers();
     }
 }
