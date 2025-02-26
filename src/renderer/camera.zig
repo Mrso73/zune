@@ -19,6 +19,7 @@ pub const Camera = struct {
     position: Vec3 = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
     target: Vec3 = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
     up: Vec3 = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
+    forward: Vec3 = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
 
     view_matrix: Mat4 = Mat4.identity(),
     projection_matrix: Mat4 = Mat4.identity(),
@@ -123,7 +124,12 @@ pub const Camera = struct {
             },
         }
     }
-    
+
+    /// Get the forward direction vector
+    pub fn getForwardVector(self: *const Camera) Vec3 {
+        return self.forward;
+    }
+
 
     /// Set the camera position and update the view matrix
     pub fn setPosition(self: *Camera, position: Vec3) void {
@@ -141,6 +147,10 @@ pub const Camera = struct {
 
     /// Update the view matrix based on the current position, target, and up vector.
     pub fn updateViewMatrix(self: *Camera) void {
+        // Calculate forward vector
+        self.forward = Vec3.normalize(Vec3.subtract(self.target, self.position));
+        
+        // Create the view matrix
         self.view_matrix = Mat4.lookAt(
             self.position,
             self.target,
@@ -186,6 +196,9 @@ pub const Camera = struct {
             });
             std.debug.print("Up: ({d:.2}, {d:.2}, {d:.2})\n", .{
                 self.up[0], self.up[1], self.up[2],
+            });
+            std.debug.print("Forward: ({d:.2}, {d:.2}, {d:.2})\n", .{
+                self.forward.x, self.forward.y, self.forward.z,
             });
         }
     }
