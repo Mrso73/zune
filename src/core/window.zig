@@ -21,7 +21,14 @@ pub const WindowConfig = struct {
     cursor_visible: bool = true,
     transparent: bool = false,
     floating: bool = false,
-    with_input_system: bool = false,
+    with_input_system: bool = true,
+};
+
+
+pub const CallbackContext = struct {
+    window: *Window,
+    input: ?*Input,
+    user_data: ?*anyopaque,
 };
 
 
@@ -51,7 +58,7 @@ pub const Window = struct {
     owns_input: bool = false,
 
     // Add a callback data field to store in user pointer
-    callback_data: ?*anyopaque = null,
+    callback_context: CallbackContext,
 
     // TODO: move error system to err module
     pub const Error = error{
@@ -125,16 +132,21 @@ pub const Window = struct {
             .is_focused = false,
             .input = null,
             .owns_input = false,
+            .callback_context = .{
+                .window = self_ptr,
+                .input = null,
+                .user_data = null,
+            }
         };
 
         // Store self pointer in GLFW user pointer
-        c.glfwSetWindowUserPointer(window, self_ptr);
+        c.glfwSetWindowUserPointer(window, &self_ptr.callback_context);
 
         // Create input system if requested
         if (config.with_input_system) {
             try self_ptr.createDefaultInput();
         }
-
+        
         return self_ptr;
     }
 
@@ -153,6 +165,7 @@ pub const Window = struct {
         }
         
         self.input = try Input.create(self.allocator, self);
+        self.callback_context.input = self.input;
         self.owns_input = true; // We created this input, so we own it
     }
 
@@ -166,6 +179,7 @@ pub const Window = struct {
         
         // Set the new input system
         self.input = input_system;
+        self.callback_context.input = self.input;
         self.owns_input = false; // We don't own this input, it was provided externally
         
         // Attach this window to the input system
@@ -287,14 +301,7 @@ pub const Window = struct {
 
     // Method to set callback data
     pub fn setCallbackData(self: *Window, data: ?*anyopaque) void {
-        self.callback_data = data;
-        c.glfwSetWindowUserPointer(self.handle, data);
-    }
-    
-    
-    // Method to get callback data
-    pub fn getCallbackData(self: *Window) ?*anyopaque {
-        return self.callback_data;
+        self.callback_context.user_data = data;
     }
 
 
