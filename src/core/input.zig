@@ -195,7 +195,7 @@ pub const RecentInputTracker = struct {
 // Input system main struct
 pub const Input = struct {
     allocator: std.mem.Allocator,
-    window: *Window,
+    window: ?*Window,
 
     // State tracking
     current_keys: std.AutoHashMap(KeyCode, InputState),
@@ -225,10 +225,10 @@ pub const Input = struct {
     // ============================================================
 
 
-    pub fn create(allocator: std.mem.Allocator, window: *Window) !*Input {
-        const input_ptr = try allocator.create(Input);
+    pub fn create(allocator: std.mem.Allocator, window: ?*Window) !*Input {
+        const self = try allocator.create(Input);
 
-        input_ptr.* = .{
+        self.* = .{
             .allocator = allocator,
             .window = window,
 
@@ -249,9 +249,12 @@ pub const Input = struct {
             .previous_mouse_pos = .{ .x = 0, .y = 0 },
         };
 
-        try input_ptr.setupCallbacks();
+        // Only set up callbacks if a window is provided
+        if (window != null) {
+            try self.setupCallbacks();
+        }
 
-        return input_ptr;
+        return self;
     }
 
 
@@ -259,8 +262,14 @@ pub const Input = struct {
     // Public API: Operational Functions
     // ============================================================
 
+    // Add function to connect input to a window
+    pub fn attachToWindow(self: *Input, window: *Window) !void {
+        self.window = window;
+        try self.setupCallbacks();
+    }
+
+
     /// Process all input events and update input state
-    /// This should be called at the beginning of each frame before other input functions
     pub fn update(self: *Input) !void {
         // Increment frame counters
         self.keyboard_tracker.incrementFrame();
@@ -427,8 +436,16 @@ pub const Input = struct {
     }
 
 
+    pub fn isMouseButtonUp(self: *const Input, button: MouseButton) bool {
+        return if (self.current_mouse.get(button)) |state| 
+            state == .up 
+        else 
+            true; // If not found, consider it Up
+    }
+
+
     /// Check if button was pressed during the last x frames
-    pub fn wasMouseButtonRecentlyPressed(self: *const Input, button: MouseButton, frame_threshold: u32) bool {
+    pub fn wasMouseButtonJustPressed(self: *const Input, button: MouseButton, frame_threshold: u32) bool {
         // Use the raw button value (c_int) directly
         const button_value: c_int = @intFromEnum(button);
         return self.mouse_tracker.wasRecentlyPressed(button_value, frame_threshold);
@@ -436,7 +453,7 @@ pub const Input = struct {
 
 
     /// Check if key was released during the last x frames
-    pub fn wasMouseButtonRecentlyReleased(self: *const Input, button: MouseButton, frame_threshold: u32) bool {
+    pub fn wasMouseButtonJustReleased(self: *const Input, button: MouseButton, frame_threshold: u32) bool {
         // Use the raw button value (c_int) directly
         const button_value: c_int = @intFromEnum(button);
         return self.mouse_tracker.wasRecentlyReleased(button_value, frame_threshold);
@@ -476,15 +493,22 @@ pub const Input = struct {
     // ============================================================
 
     fn setupCallbacks(self: *Input) !void {
-        const window_handle = self.window.handle;
+        if (self.window) |window| {
+            const window_handle = window.handle;
 
-        // Store self pointer in window user pointer for callbacks
-        c.glfwSetWindowUserPointer(window_handle, self);
+            // Store self pointer in window user pointer for callbacks
+            //c.glfwSetWindowUserPointer(window_handle, self);
 
-        // Set up key callback
-        _ = c.glfwSetKeyCallback(window_handle, keyCallback);
-        _ = c.glfwSetMouseButtonCallback(window_handle, mouseButtonCallback);
-        _ = c.glfwSetCursorPosCallback(window_handle, cursorPosCallback);
+            // Store self pointer in window callback data
+            window.setCallbackData(self);
+
+            // Set up key callback
+            _ = c.glfwSetKeyCallback(window_handle, keyCallback);
+            _ = c.glfwSetMouseButtonCallback(window_handle, mouseButtonCallback);
+            _ = c.glfwSetCursorPosCallback(window_handle, cursorPosCallback);
+        } else {
+            return error.NoWindowAttached;
+        }
     }
 
 
@@ -493,7 +517,11 @@ pub const Input = struct {
         _ = scancode;
         _ = mods;
 
-        const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
+        const user_ptr = c.glfwGetWindowUserPointer(window);
+        if (user_ptr == null) return;
+
+        // Determine if the user pointer is a Window or an Input
+        const self = @as(*Input, @ptrCast(@alignCast(user_ptr)));
 
         // Queue the event instead of immediately changing state
         const event = switch (action) {
@@ -523,7 +551,11 @@ pub const Input = struct {
     fn mouseButtonCallback(window: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
         _ = mods;
 
-        const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
+        const user_ptr = c.glfwGetWindowUserPointer(window);
+        if (user_ptr == null) return;
+
+        // Determine if the user pointer is a Window or an Input
+        const self = @as(*Input, @ptrCast(@alignCast(user_ptr)));
 
         // Queue the event instead of immediately changing state
         const event = switch (action) {
@@ -551,7 +583,11 @@ pub const Input = struct {
 
 
     fn cursorPosCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
-        const self = @as(*Input, @ptrCast(@alignCast(c.glfwGetWindowUserPointer(window))));
+        const user_ptr = c.glfwGetWindowUserPointer(window);
+        if (user_ptr == null) return;
+
+        // Determine if the user pointer is a Window or an Input
+        const self = @as(*Input, @ptrCast(@alignCast(user_ptr)));
 
         // Queue cursor movement event
         const event = InputEvent{
