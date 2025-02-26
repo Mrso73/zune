@@ -1,6 +1,8 @@
 const std = @import("std");
 const c = @import("../bindings/c.zig");
+
 const Window = @import("window.zig").Window;
+const CallbackContext = @import("window.zig").CallbackContext;
 
 pub const MousePosition = struct {
     x: f64,
@@ -122,11 +124,11 @@ pub const KeyCode = enum(c_int) {
 };
 
 
-pub const InputState = enum {
-    up, // Key is not pressed and wasn't recently released
-    pressed, // Key was just pressed this frame
-    held, // Key continues to be held down
-    released, // Key was just released this frame
+pub const InputState = enum(u2) {
+    up = 0, // Key is not pressed and wasn't recently released
+    pressed = 1, // Key was just pressed this frame
+    held = 2, // Key continues to be held down
+    released = 3, // Key was just released this frame
 };
 
 
@@ -144,52 +146,13 @@ const InputEvent = struct {
     cursor_y: f64 = 0,
 };
 
+// Constants for array sizes
+const KEY_ARRAY_SIZE = 512; // GLFW_KEY_LAST + 1 (348 in standard GLFW)
+const MOUSE_BUTTON_ARRAY_SIZE = 8; // GLFW_MOUSE_BUTTON_LAST + 1 (8 in standard GLFW)
+const RECENT_INPUT_FRAMES = 10; // Number of frames to track for "recent" input
 
-// Struct to track recent input events with timeout
-pub const RecentInputTracker = struct {
-    frame_count: u32,
-    last_pressed_frame: std.AutoHashMap(i32, u32),
-    last_released_frame: std.AutoHashMap(i32, u32),
-
-    pub fn init(allocator: std.mem.Allocator) RecentInputTracker {
-        return .{
-            .frame_count = 0,
-            .last_pressed_frame = std.AutoHashMap(i32, u32).init(allocator),
-            .last_released_frame = std.AutoHashMap(i32, u32).init(allocator),
-        };
-    }
-
-    pub fn deinit(self: *RecentInputTracker) void {
-        self.last_pressed_frame.deinit();
-        self.last_released_frame.deinit();
-    }
-
-    pub fn incrementFrame(self: *RecentInputTracker) void {
-        self.frame_count += 1;
-    }
-
-    pub fn recordPress(self: *RecentInputTracker, key_or_button: i32) !void {
-        try self.last_pressed_frame.put(key_or_button, self.frame_count);
-    }
-
-    pub fn recordRelease(self: *RecentInputTracker, key_or_button: i32) !void {
-        try self.last_released_frame.put(key_or_button, self.frame_count);
-    }
-
-    pub fn wasRecentlyPressed(self: *const RecentInputTracker, key_or_button: i32, frame_threshold: u32) bool {
-        if (self.last_pressed_frame.get(key_or_button)) |last_frame| {
-            return (self.frame_count - last_frame) <= frame_threshold;
-        }
-        return false;
-    }
-
-    pub fn wasRecentlyReleased(self: *const RecentInputTracker, key_or_button: i32, frame_threshold: u32) bool {
-        if (self.last_released_frame.get(key_or_button)) |last_frame| {
-            return (self.frame_count - last_frame) <= frame_threshold;
-        }
-        return false;
-    }
-};
+// Constant for initial frame value (ensures wasJustPressed/Released returns false initially)
+const FRAME_INIT_VALUE = std.math.maxInt(u32);
 
 
 // Input system main struct
@@ -198,26 +161,25 @@ pub const Input = struct {
     window: ?*Window,
 
     // State tracking
-    current_keys: std.AutoHashMap(KeyCode, InputState),
-    previous_keys: std.AutoHashMap(KeyCode, InputState),
-    current_mouse: std.AutoHashMap(MouseButton, InputState),
-    previous_mouse: std.AutoHashMap(MouseButton, InputState),
+    current_keys: [KEY_ARRAY_SIZE]InputState = [_]InputState{.up} ** KEY_ARRAY_SIZE,
+    previous_keys: [KEY_ARRAY_SIZE]InputState = [_]InputState{.up} ** KEY_ARRAY_SIZE,
+    current_mouse: [MOUSE_BUTTON_ARRAY_SIZE]InputState = [_]InputState{.up} ** MOUSE_BUTTON_ARRAY_SIZE,
+    previous_mouse: [MOUSE_BUTTON_ARRAY_SIZE]InputState = [_]InputState{.up} ** MOUSE_BUTTON_ARRAY_SIZE,
 
     // Event queue for raw input events
     event_queue: std.ArrayList(InputEvent),
 
-    // Physical key/button state maps (directly from GLFW)
-    key_physical_state: std.AutoHashMap(c_int, bool),
-    mouse_physical_state: std.AutoHashMap(c_int, bool),
-
-    // Recent input tracking
-    keyboard_tracker: RecentInputTracker,
-    mouse_tracker: RecentInputTracker,
+    // Recent input frame tracking
+    frame_count: u32 = 0,
+    key_press_frames: [KEY_ARRAY_SIZE]u32 = [_]u32{FRAME_INIT_VALUE} ** KEY_ARRAY_SIZE,
+    key_release_frames: [KEY_ARRAY_SIZE]u32 = [_]u32{FRAME_INIT_VALUE} ** KEY_ARRAY_SIZE,
+    mouse_press_frames: [MOUSE_BUTTON_ARRAY_SIZE]u32 = [_]u32{FRAME_INIT_VALUE} ** MOUSE_BUTTON_ARRAY_SIZE,
+    mouse_release_frames: [MOUSE_BUTTON_ARRAY_SIZE]u32 = [_]u32{FRAME_INIT_VALUE} ** MOUSE_BUTTON_ARRAY_SIZE,
 
     // Mouse position tracking
-    mouse_pos: MousePosition,
-    mouse_delta: MousePosition,
-    previous_mouse_pos: MousePosition,
+    mouse_pos: MousePosition = .{ .x = 0, .y = 0 },
+    mouse_delta: MousePosition = .{ .x = 0, .y = 0 },
+    previous_mouse_pos: MousePosition = .{ .x = 0, .y = 0 },
 
 
     // ============================================================
@@ -231,22 +193,7 @@ pub const Input = struct {
         self.* = .{
             .allocator = allocator,
             .window = window,
-
-            .current_keys = std.AutoHashMap(KeyCode, InputState).init(allocator),
-            .previous_keys = std.AutoHashMap(KeyCode, InputState).init(allocator),
-            .current_mouse = std.AutoHashMap(MouseButton, InputState).init(allocator),
-            .previous_mouse = std.AutoHashMap(MouseButton, InputState).init(allocator),
-
             .event_queue = std.ArrayList(InputEvent).init(allocator),
-            .key_physical_state = std.AutoHashMap(c_int, bool).init(allocator),
-            .mouse_physical_state = std.AutoHashMap(c_int, bool).init(allocator),
-
-            .keyboard_tracker = RecentInputTracker.init(allocator),
-            .mouse_tracker = RecentInputTracker.init(allocator),
-
-            .mouse_pos = .{ .x = 0, .y = 0 },
-            .mouse_delta = .{ .x = 0, .y = 0 },
-            .previous_mouse_pos = .{ .x = 0, .y = 0 },
         };
 
         // Only set up callbacks if a window is provided
@@ -271,80 +218,60 @@ pub const Input = struct {
 
     /// Process all input events and update input state
     pub fn update(self: *Input) !void {
-        // Increment frame counters
-        self.keyboard_tracker.incrementFrame();
-        self.mouse_tracker.incrementFrame();
+        // Increment frame counter
+        self.frame_count += 1;
 
         // Save previous state
-        self.previous_keys.clearRetainingCapacity();
-        self.previous_mouse.clearRetainingCapacity();
+        std.mem.copyForwards(InputState, &self.previous_keys, &self.current_keys);
+        std.mem.copyForwards(InputState, &self.previous_mouse, &self.current_mouse);
 
-        var key_it = self.current_keys.iterator();
-        while (key_it.next()) |entry| {
-            try self.previous_keys.put(entry.key_ptr.*, entry.value_ptr.*);
-        }
-
-        var mouse_it = self.current_mouse.iterator();
-        while (mouse_it.next()) |entry| {
-            try self.previous_mouse.put(entry.key_ptr.*, entry.value_ptr.*);
-        }
-
-        // transition all pressed -> held and released -> up
-        var keys_to_update = std.ArrayList(struct { key: KeyCode, new_state: InputState }).init(self.allocator);
-        defer keys_to_update.deinit();
-
-        key_it = self.current_keys.iterator();
-        while (key_it.next()) |entry| {
-            switch (entry.value_ptr.*) {
-                .pressed => try keys_to_update.append(.{ .key = entry.key_ptr.*, .new_state = .held }),
-                .released => try keys_to_update.append(.{ .key = entry.key_ptr.*, .new_state = .up }),
+        // Update states: transition all pressed -> held and released -> up
+        for (0..KEY_ARRAY_SIZE) |i| {
+            switch (self.current_keys[i]) {
+                .pressed => self.current_keys[i] = .held,
+                .released => self.current_keys[i] = .up,
                 else => {}, // Leave held and up as they are
             }
         }
 
-        for (keys_to_update.items) |update_item| {
-            try self.current_keys.put(update_item.key, update_item.new_state);
-        }
-
-        // Similar for mouse
-        var buttons_to_update = std.ArrayList(struct { button: MouseButton, new_state: InputState }).init(self.allocator);
-        defer buttons_to_update.deinit();
-
-        mouse_it = self.current_mouse.iterator();
-        while (mouse_it.next()) |entry| {
-            switch (entry.value_ptr.*) {
-                .pressed => try buttons_to_update.append(.{ .button = entry.key_ptr.*, .new_state = .held }),
-                .released => try buttons_to_update.append(.{ .button = entry.key_ptr.*, .new_state = .up }),
+        for (0..MOUSE_BUTTON_ARRAY_SIZE) |i| {
+            switch (self.current_mouse[i]) {
+                .pressed => self.current_mouse[i] = .held,
+                .released => self.current_mouse[i] = .up,
                 else => {}, // Leave held and up as they are
             }
-        }
-
-        for (buttons_to_update.items) |update_item| {
-            try self.current_mouse.put(update_item.button, update_item.new_state);
         }
 
         // Process all queued events
         for (self.event_queue.items) |event| {
             switch (event.event_type) {
                 .key_press => {
-                    const key_code = KeyCode.fromGLFW(event.key_or_button);
-                    try self.current_keys.put(key_code, .pressed);
-                    try self.keyboard_tracker.recordPress(event.key_or_button);
+                    const key_index = @as(usize, @intCast(event.key_or_button));
+                    if (key_index < KEY_ARRAY_SIZE) {
+                        self.current_keys[key_index] = .pressed;
+                        self.key_press_frames[key_index] = self.frame_count;
+                    }
                 },
                 .key_release => {
-                    const key_code = KeyCode.fromGLFW(event.key_or_button);
-                    try self.current_keys.put(key_code, .released);
-                    try self.keyboard_tracker.recordRelease(event.key_or_button);
+                    const key_index = @as(usize, @intCast(event.key_or_button));
+                    if (key_index < KEY_ARRAY_SIZE) {
+                        self.current_keys[key_index] = .released;
+                        self.key_release_frames[key_index] = self.frame_count;
+                    }
                 },
                 .mouse_press => {
-                    const mouse_button = MouseButton.fromGLFW(event.key_or_button);
-                    try self.current_mouse.put(mouse_button, .pressed);
-                    try self.mouse_tracker.recordPress(event.key_or_button);
+                    const button_index = @as(usize, @intCast(event.key_or_button));
+                    if (button_index < MOUSE_BUTTON_ARRAY_SIZE) {
+                        self.current_mouse[button_index] = .pressed;
+                        self.mouse_press_frames[button_index] = self.frame_count;
+                    }
                 },
                 .mouse_release => {
-                    const mouse_button = MouseButton.fromGLFW(event.key_or_button);
-                    try self.current_mouse.put(mouse_button, .released);
-                    try self.mouse_tracker.recordRelease(event.key_or_button);
+                    const button_index = @as(usize, @intCast(event.key_or_button));
+                    if (button_index < MOUSE_BUTTON_ARRAY_SIZE) {
+                        self.current_mouse[button_index] = .released;
+                        self.mouse_release_frames[button_index] = self.frame_count;
+                    }
                 },
                 .cursor_move => {
                     self.previous_mouse_pos = self.mouse_pos;
@@ -364,99 +291,111 @@ pub const Input = struct {
 
     // Key state checking
     pub fn isKeyPressed(self: *const Input, key: KeyCode) bool {
-        return if (self.current_keys.get(key)) |state|
-            state == .pressed
-        else
-            false;
+        const key_index = @as(usize, @intCast(@intFromEnum(key)));
+        if (key_index >= KEY_ARRAY_SIZE) return false;
+        return self.current_keys[key_index] == .pressed;
     }
 
 
     pub fn isKeyHeld(self: *const Input, key: KeyCode) bool {
-        return if (self.current_keys.get(key)) |state|
-            state == .held or state == .pressed
-        else
-            false;
+        const key_index = @as(usize, @intCast(@intFromEnum(key)));
+        if (key_index >= KEY_ARRAY_SIZE) return false;
+        return self.current_keys[key_index] == .held or self.current_keys[key_index] == .pressed;
     }
 
 
     pub fn isKeyReleased(self: *const Input, key: KeyCode) bool {
-        return if (self.current_keys.get(key)) |state|
-            state == .released
-        else
-            false;
+        const key_index = @as(usize, @intCast(@intFromEnum(key)));
+        if (key_index >= KEY_ARRAY_SIZE) return false;
+        return self.current_keys[key_index] == .released;
     }
 
 
     pub fn isKeyUp(self: *const Input, key: KeyCode) bool {
-        return if (self.current_keys.get(key)) |state|
-            state == .up
-        else
-            true; // If not found, consider it Up
+        const key_index = @as(usize, @intCast(@intFromEnum(key)));
+        if (key_index >= KEY_ARRAY_SIZE) return true; // Consider out-of-range as up
+        return self.current_keys[key_index] == .up;
     }
 
 
     /// Check if key was pressed during the last x frames
     pub fn wasKeyJustPressed(self: *const Input, key: KeyCode, frame_threshold: u32) bool {
-        // Use the raw key value (c_int) directly
-        const key_value: c_int = @intFromEnum(key);
-        return self.keyboard_tracker.wasRecentlyPressed(key_value, frame_threshold);
+        const key_index = @as(usize, @intCast(@intFromEnum(key)));
+        if (key_index >= KEY_ARRAY_SIZE) return false;  
+
+        // Check if this key has ever been pressed
+        if (self.key_press_frames[key_index] == FRAME_INIT_VALUE) return false;
+        
+        // Check if the key was pressed within the threshold
+        return (self.frame_count - self.key_press_frames[key_index]) <= frame_threshold;
     }
 
 
     /// Check if key was released during the last x frames
     pub fn wasKeyJustReleased(self: *const Input, key: KeyCode, frame_threshold: u32) bool {
-        // Use the raw key value (c_int) directly
-        const key_value: c_int = @intFromEnum(key);
-        return self.keyboard_tracker.wasRecentlyReleased(key_value, frame_threshold);
+        const key_index = @as(usize, @intCast(@intFromEnum(key)));
+        if (key_index >= KEY_ARRAY_SIZE) return false;
+
+        // Check if this key has ever been released
+        if (self.key_release_frames[key_index] == FRAME_INIT_VALUE) return false;
+
+        // Check if the key was released within the threshold
+        return (self.frame_count - self.key_release_frames[key_index]) <= frame_threshold;
     }
 
 
     // Mouse state checking
     pub fn isMouseButtonPressed(self: *const Input, button: MouseButton) bool {
-        return if (self.current_mouse.get(button)) |state|
-            state == .pressed
-        else
-            false;
+        const button_index = @as(usize, @intCast(@intFromEnum(button)));
+        if (button_index >= MOUSE_BUTTON_ARRAY_SIZE) return false;
+        return self.current_mouse[button_index] == .pressed;
     }
 
 
     pub fn isMouseButtonHeld(self: *const Input, button: MouseButton) bool {
-        return if (self.current_mouse.get(button)) |state|
-            state == .held or state == .pressed
-        else
-            false;
+        const button_index = @as(usize, @intCast(@intFromEnum(button)));
+        if (button_index >= MOUSE_BUTTON_ARRAY_SIZE) return false;
+        return self.current_mouse[button_index] == .held or self.current_mouse[button_index] == .pressed;
     }
 
 
     pub fn isMouseButtonReleased(self: *const Input, button: MouseButton) bool {
-        return if (self.current_mouse.get(button)) |state|
-            state == .released
-        else
-            false;
+        const button_index = @as(usize, @intCast(@intFromEnum(button)));
+        if (button_index >= MOUSE_BUTTON_ARRAY_SIZE) return false;
+        return self.current_mouse[button_index] == .released;
     }
 
 
     pub fn isMouseButtonUp(self: *const Input, button: MouseButton) bool {
-        return if (self.current_mouse.get(button)) |state| 
-            state == .up 
-        else 
-            true; // If not found, consider it Up
+        const button_index = @as(usize, @intCast(@intFromEnum(button)));
+        if (button_index >= MOUSE_BUTTON_ARRAY_SIZE) return true; // Consider out-of-range as up
+        return self.current_mouse[button_index] == .up;
     }
 
 
     /// Check if button was pressed during the last x frames
     pub fn wasMouseButtonJustPressed(self: *const Input, button: MouseButton, frame_threshold: u32) bool {
-        // Use the raw button value (c_int) directly
-        const button_value: c_int = @intFromEnum(button);
-        return self.mouse_tracker.wasRecentlyPressed(button_value, frame_threshold);
+        const button_index = @as(usize, @intCast(@intFromEnum(button)));
+        if (button_index >= MOUSE_BUTTON_ARRAY_SIZE) return false;
+
+        // Check if this button has ever been pressed
+        if (self.mouse_press_frames[button_index] == FRAME_INIT_VALUE) return false;
+        
+        // Check if the button was pressed within the threshold
+        return (self.frame_count - self.mouse_press_frames[button_index]) <= frame_threshold;
     }
 
 
-    /// Check if key was released during the last x frames
+    /// Check if button was released during the last x frames
     pub fn wasMouseButtonJustReleased(self: *const Input, button: MouseButton, frame_threshold: u32) bool {
-        // Use the raw button value (c_int) directly
-        const button_value: c_int = @intFromEnum(button);
-        return self.mouse_tracker.wasRecentlyReleased(button_value, frame_threshold);
+        const button_index = @as(usize, @intCast(@intFromEnum(button)));
+        if (button_index >= MOUSE_BUTTON_ARRAY_SIZE) return false;
+
+        // Check if this button has ever been released
+        if (self.mouse_release_frames[button_index] == FRAME_INIT_VALUE) return false;
+        
+        // Check if the button was released within the threshold
+        return (self.frame_count - self.mouse_release_frames[button_index]) <= frame_threshold;
     }
 
 
@@ -475,15 +414,7 @@ pub const Input = struct {
     // ============================================================
 
     pub fn release(self: *Input) void {
-        self.current_keys.deinit();
-        self.previous_keys.deinit();
-        self.current_mouse.deinit();
-        self.previous_mouse.deinit();
         self.event_queue.deinit();
-        self.key_physical_state.deinit();
-        self.mouse_physical_state.deinit();
-        self.keyboard_tracker.deinit();
-        self.mouse_tracker.deinit();
         self.allocator.destroy(self);
     }
 
@@ -495,9 +426,6 @@ pub const Input = struct {
     fn setupCallbacks(self: *Input) !void {
         if (self.window) |window| {
             const window_handle = window.handle;
-
-            // Store self pointer in window user pointer for callbacks
-            //c.glfwSetWindowUserPointer(window_handle, self);
 
             // Store self pointer in window callback data
             window.setCallbackData(self);
@@ -517,86 +445,76 @@ pub const Input = struct {
         _ = scancode;
         _ = mods;
 
-        const user_ptr = c.glfwGetWindowUserPointer(window);
-        if (user_ptr == null) return;
+        const context_ptr = c.glfwGetWindowUserPointer(window);
+        if (context_ptr == null) return;
 
         // Determine if the user pointer is a Window or an Input
-        const self = @as(*Input, @ptrCast(@alignCast(user_ptr)));
+        const context = @as(*CallbackContext, @ptrCast(@alignCast(context_ptr)));
+        if (context.input) |input| {
+            // Continue with event handling using input...
+            const event = switch (action) {
+                c.GLFW_PRESS => InputEvent{
+                    .event_type = .key_press,
+                    .key_or_button = key,
+                },
+                c.GLFW_RELEASE => InputEvent{
+                    .event_type = .key_release,
+                    .key_or_button = key,
+                },
+                else => return, // Ignore repeats
+            };
 
-        // Queue the event instead of immediately changing state
-        const event = switch (action) {
-            c.GLFW_PRESS => InputEvent{ 
-                .event_type = .key_press,
-                .key_or_button = key,
-            },
-            c.GLFW_RELEASE => InputEvent{
-                .event_type = .key_release,
-                .key_or_button = key,
-            },
-            else => return, // Ignore repeats as they're handled differently now
-        };
-
-        // Update physical key state map
-        if (action == c.GLFW_PRESS) {
-            self.key_physical_state.put(key, true) catch return;
-        } else if (action == c.GLFW_RELEASE) {
-            self.key_physical_state.put(key, false) catch return;
+            // Add to event queue
+            input.event_queue.append(event) catch return;
         }
-
-        // Add to event queue
-        self.event_queue.append(event) catch return;
     }
 
 
     fn mouseButtonCallback(window: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
         _ = mods;
 
-        const user_ptr = c.glfwGetWindowUserPointer(window);
-        if (user_ptr == null) return;
+        const context_ptr = c.glfwGetWindowUserPointer(window);
+        if (context_ptr == null) return;
 
         // Determine if the user pointer is a Window or an Input
-        const self = @as(*Input, @ptrCast(@alignCast(user_ptr)));
+        const context = @as(*CallbackContext, @ptrCast(@alignCast(context_ptr)));
+        if (context.input) |input| {
+            // Queue the event instead of immediately changing state
+            const event = switch (action) {
+                c.GLFW_PRESS => InputEvent{
+                    .event_type = .mouse_press,
+                    .key_or_button = button,
+                },
+                c.GLFW_RELEASE => InputEvent{
+                    .event_type = .mouse_release,
+                    .key_or_button = button,
+                },
+                else => return,
+            };
 
-        // Queue the event instead of immediately changing state
-        const event = switch (action) {
-            c.GLFW_PRESS => InputEvent{
-                .event_type = .mouse_press,
-                .key_or_button = button,
-            },
-            c.GLFW_RELEASE => InputEvent{
-                .event_type = .mouse_release,
-                .key_or_button = button,
-            },
-            else => return,
-        };
-
-        // Update physical button state map
-        if (action == c.GLFW_PRESS) {
-            self.mouse_physical_state.put(button, true) catch return;
-        } else if (action == c.GLFW_RELEASE) {
-            self.mouse_physical_state.put(button, false) catch return;
+            // Add to event queue
+            input.event_queue.append(event) catch return;
         }
-
-        // Add to event queue
-        self.event_queue.append(event) catch return;
     }
 
 
     fn cursorPosCallback(window: ?*c.GLFWwindow, xpos: f64, ypos: f64) callconv(.C) void {
-        const user_ptr = c.glfwGetWindowUserPointer(window);
-        if (user_ptr == null) return;
+        const context_ptr = c.glfwGetWindowUserPointer(window);
+        if (context_ptr == null) return;
 
         // Determine if the user pointer is a Window or an Input
-        const self = @as(*Input, @ptrCast(@alignCast(user_ptr)));
+        const context = @as(*CallbackContext, @ptrCast(@alignCast(context_ptr)));
+        if (context.input) |input| {
+            // Queue cursor movement event
+            const event = InputEvent{
+                .event_type = .cursor_move,
+                .key_or_button = 0, // Not used for cursor
+                .cursor_x = xpos,
+                .cursor_y = ypos,
+            };  
 
-        // Queue cursor movement event
-        const event = InputEvent{
-            .event_type = .cursor_move,
-            .key_or_button = 0, // Not used for cursor
-            .cursor_x = xpos,
-            .cursor_y = ypos,
-        };
-
-        self.event_queue.append(event) catch return;
+            // Add to event queue
+            input.event_queue.append(event) catch return;
+        }
     }
 };
