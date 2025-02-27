@@ -79,7 +79,11 @@ pub const Texture = struct {
     /// Deletes the texture object.
     pub fn release(self: *Texture) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
-        if (prev == 1) {
+
+        if (prev == 0) {
+            @panic("Double release of Texture detected"); // already freed
+
+        } else if (prev == 1) {
             c.glDeleteTextures(1, &self.id);
             err.checkGLError("glDeleteTextures");
 

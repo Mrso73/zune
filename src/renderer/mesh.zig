@@ -148,6 +148,7 @@ pub const Mesh = struct {
 
         if (prev == 0) {
             @panic("Double release of Mesh detected"); // already freed
+            
         } else if (prev == 1) {
             // Last reference, clean up resources
             self.deinit();

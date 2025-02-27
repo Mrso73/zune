@@ -71,7 +71,11 @@ pub const Material = struct {
 
     pub fn release(self: *Material) u32 {
         const prev = self.ref_count.fetchSub(1, .monotonic);
-        if (prev == 1) {
+
+        if (prev == 0) {
+            @panic("Double release of Material detected"); // already freed
+            
+        } else if (prev == 1) {
         
             _ = self.shader.release();
             if (self.texture) |tex| _ = tex.release();
