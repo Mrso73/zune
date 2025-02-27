@@ -42,7 +42,7 @@ pub fn main() !void {
         // Clear the window
         renderer.clear();
 
-        window.pollEvents();
+        try window.pollEvents();
         window.swapBuffers();
     }
 }

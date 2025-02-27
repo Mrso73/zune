@@ -1,9 +1,13 @@
 const std = @import("std");
-const c = @import("../bindings/c.zig"); // Import c libraries like GLFW and GLAD
+const c = @import("../bindings/c.zig");
+
+const Input = @import("input.zig").Input;
+
 
 fn errorCallback(err: c_int, description: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error: {d} {s}\n", .{ err, description });
 }
+
 
 pub const WindowConfig = struct {
     title: [:0]const u8,
@@ -17,16 +21,27 @@ pub const WindowConfig = struct {
     cursor_visible: bool = true,
     transparent: bool = false,
     floating: bool = false,
+    with_input_system: bool = true,
 };
+
+
+pub const CallbackContext = struct {
+    window: *Window,
+    input: ?*Input,
+    user_data: ?*anyopaque,
+};
+
 
 // Define reusable types
 pub const FramebufferSize = struct { width: u32, height: u32 };
+
 
 pub const CursorMode = enum {
     normal,
     hidden,
     disabled,
 };
+
 
 pub const Window = struct {
     handle: *c.GLFWwindow,
@@ -37,6 +52,13 @@ pub const Window = struct {
     // Window state
     is_minimized: bool,
     is_focused: bool,
+
+    // Optional integrated input system
+    input: ?*Input = null,
+    owns_input: bool = false,
+
+    // Add a callback data field to store in user pointer
+    callback_context: CallbackContext,
 
     // TODO: move error system to err module
     pub const Error = error{
@@ -108,11 +130,23 @@ pub const Window = struct {
             },
             .is_minimized = false,
             .is_focused = false,
+            .input = null,
+            .owns_input = false,
+            .callback_context = .{
+                .window = self_ptr,
+                .input = null,
+                .user_data = null,
+            }
         };
 
         // Store self pointer in GLFW user pointer
-        //c.glfwSetWindowUserPointer(window, self); TODO: REMOVE OR UNCOMMENT
+        c.glfwSetWindowUserPointer(window, &self_ptr.callback_context);
 
+        // Create input system if requested
+        if (config.with_input_system) {
+            try self_ptr.createDefaultInput();
+        }
+        
         return self_ptr;
     }
 
@@ -120,6 +154,38 @@ pub const Window = struct {
     // ============================================================
     // Public API: Window Management Functions
     // ============================================================
+
+    // Method to create the default input system
+    pub fn createDefaultInput(self: *Window) !void {
+        if (self.input != null) {
+            if (self.owns_input) {
+                self.input.?.release();
+            }
+            self.input = null;
+        }
+        
+        self.input = try Input.create(self.allocator, self);
+        self.callback_context.input = self.input;
+        self.owns_input = true; // We created this input, so we own it
+    }
+
+
+    /// Method to set a custom input system
+    pub fn setInput(self: *Window, input_system: *Input) !void {
+        // Clean up any existing input system we own
+        if (self.input != null and self.owns_input) {
+            self.input.?.release();
+        }
+        
+        // Set the new input system
+        self.input = input_system;
+        self.callback_context.input = self.input;
+        self.owns_input = false; // We don't own this input, it was provided externally
+        
+        // Attach this window to the input system
+        try input_system.attachToWindow(self);
+    }
+
 
     pub fn shouldClose(self: *const Window) bool {
         return c.glfwWindowShouldClose(self.handle) == c.GLFW_TRUE;
@@ -217,16 +283,38 @@ pub const Window = struct {
     }
 
 
-    pub fn pollEvents(self: *Window) void {
-        _ = self;
+    pub fn pollEvents(self: *Window) !void {
         c.glfwPollEvents();
+
+        // Update input system if it exists
+        if (self.input) |input_system| {
+            try input_system.update();
+        }
     }
+
+
+    /// Convenience method to access input system
+    pub fn getInput(self: *Window) ?*Input {
+        return self.input;
+    }
+
+
+    // Method to set callback data
+    pub fn setCallbackData(self: *Window, data: ?*anyopaque) void {
+        self.callback_context.user_data = data;
+    }
+
 
     // ============================================================
     // Public API: Destruction Function
     // ============================================================
 
     pub fn release(self: *Window) void {
+        // Release input system if it exists and we own it
+        if (self.input != null and self.owns_input) {
+            self.input.?.release();
+        }
+
         c.glfwDestroyWindow(self.handle);
         c.glfwTerminate();
         self.allocator.destroy(self);

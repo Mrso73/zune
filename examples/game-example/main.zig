@@ -19,6 +19,7 @@ pub fn main() !void {
         .height = WINDOW_HEIGHT,
         .transparent = false,
         .decorated = true,
+        .with_input_system = true,
     });
     defer window.release();
 
@@ -30,9 +31,6 @@ pub fn main() !void {
     var registry = try zune.ecs.Registry.create(allocator);
     defer registry.release();
 
-    // setup input manager
-    var input = try zune.core.Input.create(allocator, window);
-    defer input.release();
 
     // --- Set Variables --- //
 
@@ -43,6 +41,7 @@ pub fn main() !void {
 
     window.centerWindow();
     window.setCursorMode(.disabled);
+
 
     // --- Create the model --- //
 
@@ -90,25 +89,23 @@ pub fn main() !void {
 
     // --- Main Loop --- //
 
-    while (!window.shouldClose()) {
-
-        
-        try input.update();
-
-        
+    while (!window.shouldClose()) {        
 
         // ==== Process Input ==== \\
         //const mouse_pos = input.getMousePosition();
-        try playerMovementSystem(registry, input);
-        
+        if (window.input.?.isKeyPressed(.KEY_ESCAPE)) {
+            window.setTitle("miauw");
+        }
 
-        
+        if (window.input.?.isKeyReleased(.KEY_ESCAPE)) break;
+
+        try playerMovementSystem(registry, window.input.?);
 
         renderer.clear();
 
         try render(perspective_camera, registry);
 
-        window.pollEvents();
+        try window.pollEvents();
         window.swapBuffers();
     }
 }
@@ -146,6 +143,14 @@ fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !
         if (input.isKeyHeld(.KEY_A)) {
             components.velocity.x = -0.05;
             components.transform.position[0] += components.velocity.x;
+        }
+
+        if (input.wasKeyJustPressed(.KEY_K, 60)) {
+            std.debug.print("K +++\n", .{});
+        }
+
+        if (input.wasKeyJustReleased(.KEY_K, 60)) {
+            std.debug.print("K ---\n", .{});
         }
     }
 }

@@ -30,11 +30,6 @@ pub fn main() !void {
     var registry = try zune.ecs.Registry.create(allocator);
     defer registry.release();
 
-    // setup input manager
-    var input = try zune.core.Input.create(allocator, window);
-    defer input.release();
-
-
 
     // --- Set Variables --- //
 
@@ -43,7 +38,7 @@ pub fn main() !void {
     perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 75.0});
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
-    const initial_mouse_pos = input.getMousePosition();
+    const initial_mouse_pos = window.input.?.getMousePosition();
     var camera_controller = zune.graphics.CameraMouseController.init(&perspective_camera,
     @as(f32, @floatCast(initial_mouse_pos.x)), @as(f32, @floatCast(initial_mouse_pos.y)));    
 
@@ -123,10 +118,9 @@ pub fn main() !void {
     // --- Main Loop --- //
     
     while (!window.shouldClose()) {
-        try input.update();
 
         // ==== Process Input ==== \\     
-        const mouse_pos = input.getMousePosition();   
+        const mouse_pos = window.input.?.getMousePosition();   
         camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), 1.0 / 60.0);
 
         try updatePhysics(registry);
@@ -135,7 +129,7 @@ pub fn main() !void {
         
         try render(perspective_camera, registry);
 
-        window.pollEvents();
+        try window.pollEvents();
         window.swapBuffers();   
     }
 
