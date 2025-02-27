@@ -71,7 +71,7 @@ pub fn main() !void {
 
     
 
-    const i: f32 = 0.05;
+    const i: f32 = 0.025;
     while (!window.shouldClose()) {
 
 

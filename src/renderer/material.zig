@@ -74,11 +74,12 @@ pub const Material = struct {
 
         if (prev == 0) {
             @panic("Double release of Material detected"); // already freed
-            
+
         } else if (prev == 1) {
         
             _ = self.shader.release();
             if (self.texture) |tex| _ = tex.release();
+            
             self.allocator.destroy(self);
         }
         return prev;

@@ -68,7 +68,6 @@ pub const ResourceManager = struct {
 
         // Check if already exists
         if (self.models.get(name)) |existing| {
-            //std.debug.print("Alreay exists: {}", .{name});
             existing.addRef();
             return existing;
         }
@@ -77,10 +76,11 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-        // Create a empty model struct
+        // Create a empty Model struct
         const model = try Model.create(self.allocator);
         errdefer _ = model.release();
 
+        // Add the Model to the hash map
         try self.models.put(owned_name, model);
         return model;
     }
@@ -93,14 +93,12 @@ pub const ResourceManager = struct {
         const unique_name = try self.generateUniqueName(ResourceType.Model, prefix);
         errdefer self.allocator.free(unique_name);
 
-        // Create the mesh
+        // Create the Model
         const model = try Model.create(self.allocator);
-
         errdefer _ = model.release();
 
-        // Add the mesh to the hash map
+        // Add the Model to the hash map
         try self.models.put(unique_name, model);
-        
         return model;
     }
 
@@ -110,7 +108,6 @@ pub const ResourceManager = struct {
 
         // Check if already exists
         if (self.meshes.get(name)) |existing| {
-            //std.debug.print("Alreay exists: {}", .{name});
             existing.addRef();
             return existing;
         }
@@ -119,10 +116,11 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-        // Create the mesh creation function
+        // Create the Mesh creation function
         const mesh = try Mesh.create(self.allocator, data, indices, has_normals);
         errdefer _ = mesh.release();
 
+        // Add the Mesh to the hash map
         try self.meshes.put(owned_name, mesh);
         return mesh;
     }   
@@ -135,14 +133,12 @@ pub const ResourceManager = struct {
         const unique_name = try self.generateUniqueName(ResourceType.Mesh, prefix);
         errdefer self.allocator.free(unique_name);
 
-        // Create the mesh
+        // Create the Mesh
         const mesh = try Mesh.create(self.allocator, data, indices, has_normals);
-
         errdefer _ = mesh.release();
 
-        // Add the mesh to the hash map
+        // Add the Mesh to the hash map
         try self.meshes.put(unique_name, mesh);
-        
         return mesh;
     }
 
@@ -153,7 +149,6 @@ pub const ResourceManager = struct {
         // Check if already exists
         const name = "standard_cube_mesh";
         if (self.meshes.get(name)) |existing| {
-            //std.debug.print("Alreay exists: {}", .{name});
             existing.addRef();
             return existing;
         }
@@ -162,10 +157,11 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-        // Call the mesh creation function
+        // Call the Mesh creation function
         const mesh = try Mesh.createCube(self.allocator);
         errdefer _ = mesh.release();
 
+        // Add the Mesh to the hash map
         try self.meshes.put(owned_name, mesh);
         return mesh;
     }
@@ -177,7 +173,6 @@ pub const ResourceManager = struct {
         // Check if already exists
         const name = "standard_quad_mesh";
         if (self.meshes.get(name)) |existing| {
-            //std.debug.print("Alreay exists: {}", .{name});
             existing.addRef();
             return existing;
         }
@@ -186,10 +181,11 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-        // call the mesh creation function
+        // call the Mesh creation function
         const mesh = try Mesh.createQuad(self.allocator);
         errdefer _ = mesh.release();
 
+        // Add the Mesh to the hash map
         try self.meshes.put(owned_name, mesh);
         return mesh;
     }
@@ -200,7 +196,6 @@ pub const ResourceManager = struct {
 
         // Check if already exists
         if (self.materials.get(name)) |existing| {
-            //std.debug.print("Alreay exists: {}", .{name});
             existing.addRef();
             return existing;
         }
@@ -209,10 +204,11 @@ pub const ResourceManager = struct {
         const owned_name = try self.allocator.dupe(u8, name);
         errdefer self.allocator.free(owned_name);
 
-        // Call the metarial creation function
+        // Call the Material creation function
         const material = try Material.create(self.allocator, shader, color, texture);
         errdefer _ = material.release();
 
+        // Add the Material to the hash map
         try self.materials.put(owned_name, material);
         return material;
     }
@@ -223,18 +219,14 @@ pub const ResourceManager = struct {
         
         // Generate a unique name for the Material using the existing helper
         const unique_name = try self.generateUniqueName(ResourceType.Material, prefix);
-        // unique_name is now owned by the ResourceManager
+        errdefer self.allocator.free(unique_name);
         
-        // Create the material
+        // Create the Material
         const material = try Material.create(self.allocator, shader, color, texture);
-        errdefer {
-            _ = material.release(); 
-            self.allocator.free(unique_name); // Free the name if we fail to add it to the map
-        }
+        errdefer _ = material.release(); 
         
-        // Store in the map
+        // Add the Material to the hash map
         try self.materials.put(unique_name, material);
-        
         return material;
     }
 
@@ -244,7 +236,6 @@ pub const ResourceManager = struct {
 
         // Check if already loaded
         if (self.textures.get(path)) |existing| {
-            //std.debug.print("Alreay exists: {}", .{path});
             existing.addRef();
             return existing;
         }
@@ -253,10 +244,11 @@ pub const ResourceManager = struct {
         const owned_path = try self.allocator.dupe(u8, path);
         errdefer self.allocator.free(owned_path);
 
-        // Call the texture creation fucntion
+        // Call the Texture creation fucntion
         const texture = try Texture.createFromFile(self.allocator, path);
         errdefer _ = texture.release();
 
+        // Add the Texture to the hash map
         try self.textures.put(owned_path, texture);
         return texture;
     }
@@ -269,14 +261,12 @@ pub const ResourceManager = struct {
         const unique_name = try self.generateUniqueName(ResourceType.Texture, prefix);
         errdefer self.allocator.free(unique_name);
 
-        // Create the mesh
+        // Create the Texture
         const tex = try Texture.createFromFile(self.allocator, path);
-
         errdefer _ = tex.release();
 
-        // Add the mesh to the hash map
+        // Add the Texture to the hash map
         try self.textures.put(unique_name, tex);
-        
         return tex;
     }
 
@@ -286,7 +276,6 @@ pub const ResourceManager = struct {
 
         // Check if already exists
         if (self.shaders.get(name)) |existing| {
-            //std.debug.print("Alreay exists: {s}", .{name.});
             existing.addRef();
             return existing;
         }
@@ -299,6 +288,7 @@ pub const ResourceManager = struct {
         const shader = try Shader.create(self.allocator, vertex_source, fragment_source);
         errdefer _ = shader.release();
 
+        // Add the Shader to the hash map
         try self.shaders.put(owned_name, shader);
         return shader;
     }
@@ -311,14 +301,12 @@ pub const ResourceManager = struct {
         const unique_name = try self.generateUniqueName(ResourceType.Shader, prefix);
         errdefer self.allocator.free(unique_name);
 
-        // Create the mesh
+        // Create the Shader
         const shdr = try Shader.create(self.allocator, vertex_source, fragment_source);
-
         errdefer _ = shdr.release();
 
-        // Add the mesh to the hash map
+        // Add the Shader to the hash map
         try self.textures.put(unique_name, shdr);
-        
         return shdr;
     }
 
@@ -383,7 +371,7 @@ pub const ResourceManager = struct {
 
     /// Clean up all resources and print debug info about remaining resources
     pub fn releaseAll(self: *ResourceManager) void {
-        // std.debug.print("\n=== Resource Manager Cleanup Start ===\n", .{});
+        std.debug.print("\n=== Resource Manager Cleanup Start ===\n", .{});
 
         // Track counts for debug output
         var total_models: usize = 0;
@@ -392,7 +380,15 @@ pub const ResourceManager = struct {
         var total_textures: usize = 0;
         var total_shaders: usize = 0;
 
-        // Clean up models
+        // IMPORTANT: We release resources in REVERSE order of dependencies:
+        // 1. Models (depend on Materials and Meshes)
+        // 2. Materials (depend on Shaders and Textures)
+        // 3. Meshes (no dependencies)
+        // 4. Textures (no dependencies)
+        // 5. Shaders (no dependencies)
+
+
+        // Clean up models first (they depend on materials and meshes)
         {
             var iter = self.models.iterator();
             while (iter.next()) |entry| {
@@ -411,26 +407,7 @@ pub const ResourceManager = struct {
         }
 
 
-        // Clean up meshes
-        {
-            var iter = self.meshes.iterator();
-            while (iter.next()) |entry| {
-                const mesh = entry.value_ptr.*;
-                const ref_count = mesh.ref_count.load(.monotonic);
-                total_meshes += 1;
-
-                std.debug.print("Mesh '{s}' has {d} references\n", .{
-                    entry.key_ptr.*,
-                    ref_count,
-                });
-                _ = mesh.release();
-                self.allocator.free(entry.key_ptr.*);
-            }
-            self.meshes.deinit();
-        }
-
-
-        // Clean up materials
+        // Clean up materials next (they depend on shaders and textures)
         {
             var iter = self.materials.iterator();
             while (iter.next()) |entry| {
@@ -449,7 +426,29 @@ pub const ResourceManager = struct {
         }
 
 
-        // Clean up textures
+        // Clean up meshes (no dependencies)
+        {
+            var iter = self.meshes.iterator();
+            while (iter.next()) |entry| {
+                const mesh = entry.value_ptr.*;
+                const ref_count = mesh.ref_count.load(.monotonic);
+                total_meshes += 1;
+
+                std.debug.print("Mesh '{s}' has {d} references\n", .{
+                    entry.key_ptr.*,
+                    ref_count,
+                });
+                _ = mesh.release();
+                self.allocator.free(entry.key_ptr.*);
+            }
+            self.meshes.deinit();
+        }
+
+
+        
+
+
+        // Clean up textures (no dependencies)
         {
             var iter = self.textures.iterator();
             while (iter.next()) |entry| {
@@ -468,7 +467,7 @@ pub const ResourceManager = struct {
         }
 
 
-        // Clean up shaders
+        // Clean up shaders (no dependencies)
         {
             var iter = self.shaders.iterator();
             while (iter.next()) |entry| {
@@ -506,6 +505,7 @@ pub const ResourceManager = struct {
         const entry = self.models.getEntry(name) orelse return ResourceError.ResourceNotFound;
         const model = entry.value_ptr.*;
         const prev = model.release();
+
         if (prev == 1) {
             const key = entry.key_ptr.*;
             _ = self.models.remove(name);
@@ -519,6 +519,7 @@ pub const ResourceManager = struct {
         const entry = self.meshes.getEntry(name) orelse return ResourceError.ResourceNotFound;
         const mesh = entry.value_ptr.*;
         const prev = mesh.release();
+
         if (prev == 1) {
             const key = entry.key_ptr.*;
             _ = self.meshes.remove(name);
@@ -532,6 +533,7 @@ pub const ResourceManager = struct {
         const entry = self.materials.getEntry(name) orelse return ResourceError.ResourceNotFound;
         const material = entry.value_ptr.*;
         const prev = material.release();
+
         if (prev == 1) {
             const key = entry.key_ptr.*;
             _ = self.materials.remove(name);
@@ -545,6 +547,7 @@ pub const ResourceManager = struct {
         const entry = self.textures.getEntry(path) orelse return ResourceError.ResourceNotFound;
         const texture = entry.value_ptr.*;
         const prev = texture.release();
+
         if (prev == 1) {
             const key = entry.key_ptr.*;
             _ = self.textures.remove(path);
@@ -558,6 +561,7 @@ pub const ResourceManager = struct {
         const entry = self.shaders.getEntry(name) orelse return ResourceError.ResourceNotFound;
         const shader = entry.value_ptr.*;
         const prev = shader.release();
+
         if (prev == 1) {
             const key = entry.key_ptr.*;
             _ = self.shaders.remove(name);
