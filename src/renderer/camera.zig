@@ -88,7 +88,7 @@ pub const Camera = struct {
     // ============================================================
     // Public API: Operational Functions
     // ============================================================
-
+    
     /// Draw a model from the camera perspective
     pub fn drawModel(self: Camera, model: *Model, model_matrix: *const [16]f32) !void {
         try self.active_renderer.drawModel(model, model_matrix, &self.view_matrix.data, &self.projection_matrix.data);
@@ -161,7 +161,7 @@ pub const Camera = struct {
 
     /// Get the combined view-projection matrix
     pub fn getViewProjectionMatrix(self: *Camera) Mat4 {
-        return math.multiplyMatrices(self.projection_matrix, self.view_matrix);
+        return self.projection_matrix.multiply(self.view_matrix);
     }
 
 
