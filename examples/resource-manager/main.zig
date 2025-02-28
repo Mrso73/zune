@@ -119,7 +119,11 @@ pub fn main() !void {
     }
             
     //try resource_manager.releaseModel("main_cube_model");
+    try resource_manager.models.releaseResourceByPtr(main_cube_model);
     //try resource_manager.releaseMesh("standard_cube_mesh");
+    try resource_manager.meshes.releaseResourceByPtr(main_cube_mesh);
     //try resource_manager.releaseMaterial("main_cube_material");
+    try resource_manager.materials.releaseResourceByPtr(main_cube_material);
     //try resource_manager.releaseShader("color_shader");
+    try resource_manager.shaders.releaseResourceByPtr(main_cube_shader);
 }

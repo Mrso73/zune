@@ -226,7 +226,7 @@ pub const ResourceManager = struct {
         return try self.allocator.dupe(u8, name);
     }
     
-    
+
     /// Print reference count information for a specific type of resource
     fn printRefCounts(self: *ResourceManager, res_type: ResourceType, refs: []ResourceRefInfo) void {
         std.debug.print("\n--- {s} Reference Counts Before Cleanup ---\n", .{@tagName(res_type)});
@@ -311,6 +311,30 @@ pub fn ResourceCollection(comptime T: type) type {
                 const key = entry.key_ptr.*;
                 _ = self.resources.remove(name);
                 self.allocator.free(key);
+            }
+        }
+
+
+        /// Release a reference to a resource by pointer.
+        /// This iterates over the collection to find the matching resource.
+        pub fn releaseResourceByPtr(self: *Self, resource_ptr: *T) !void {
+            var found: bool = false;
+            var iter = self.resources.iterator();
+            while (iter.next()) |entry| {
+                if (entry.value_ptr.* == resource_ptr) {
+                    found = true;
+                    const prev = resource_ptr.release();
+                    if (prev == 1) {
+                        // Remove from hashmap and free the key.
+                        const key = entry.key_ptr.*;
+                        _ = self.resources.remove(key);
+                        self.allocator.free(key);
+                    }
+                    break;
+                }
+            }
+            if (!found) {
+                return ResourceError.ResourceNotFound;
             }
         }
 
