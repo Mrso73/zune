@@ -44,7 +44,7 @@ pub fn main() !void {
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
-    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 5.0});
+    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 0.0});
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
     const initial_mouse_pos = window.input.?.getMousePosition();

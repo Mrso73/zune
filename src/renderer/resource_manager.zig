@@ -17,6 +17,12 @@ pub const ResourceType = enum {
     Shader,
 };
 
+const ResourceRefInfo = struct {
+    name: []const u8,              // Resource identifier
+    resource_type: ResourceType,    // Type of resource
+    ref_count: u32,                // Reference count before cleanup
+};
+
 pub const ResourceError = error{
     ResourceNotFound,
     ResourceAllocationFailed,
@@ -380,6 +386,33 @@ pub const ResourceManager = struct {
         var total_textures: usize = 0;
         var total_shaders: usize = 0;
 
+        // Create lists to store reference information before cleanup
+        var model_refs = std.ArrayList(ResourceRefInfo).init(self.allocator);
+        defer model_refs.deinit();
+        var mesh_refs = std.ArrayList(ResourceRefInfo).init(self.allocator);
+        defer mesh_refs.deinit();
+        var material_refs = std.ArrayList(ResourceRefInfo).init(self.allocator);
+        defer material_refs.deinit();
+        var texture_refs = std.ArrayList(ResourceRefInfo).init(self.allocator);
+        defer texture_refs.deinit();
+        var shader_refs = std.ArrayList(ResourceRefInfo).init(self.allocator);
+        defer shader_refs.deinit();
+
+        // First pass: collect reference count information for all resources
+        self.collectResourceRefs(&model_refs, &mesh_refs, &material_refs, &texture_refs, &shader_refs) catch |err| {
+            std.debug.print("Error collecting reference information: {}\n", .{err});
+        };
+
+
+        // Print reference count information
+        self.printRefCounts(.Model, model_refs);
+        self.printRefCounts(.Mesh, mesh_refs);
+        self.printRefCounts(.Material, material_refs);
+        self.printRefCounts(.Texture, texture_refs);
+        self.printRefCounts(.Shader, shader_refs);
+
+
+
         // IMPORTANT: We release resources in REVERSE order of dependencies:
         // 1. Models (depend on Materials and Meshes)
         // 2. Materials (depend on Shaders and Textures)
@@ -393,13 +426,8 @@ pub const ResourceManager = struct {
             var iter = self.models.iterator();
             while (iter.next()) |entry| {
                 const model = entry.value_ptr.*;
-                const ref_count = model.ref_count.load(.monotonic);
                 total_models += 1;
 
-                std.debug.print("Model '{s}' has {d} references\n", .{
-                    entry.key_ptr.*,
-                    ref_count,
-                });
                 _ = model.release();
                 self.allocator.free(entry.key_ptr.*);
             }
@@ -412,13 +440,8 @@ pub const ResourceManager = struct {
             var iter = self.materials.iterator();
             while (iter.next()) |entry| {
                 const material = entry.value_ptr.*;
-                const ref_count = material.ref_count.load(.monotonic);
                 total_materials += 1;
 
-                std.debug.print("Material '{s}' has {d} references\n", .{
-                    entry.key_ptr.*,
-                    ref_count,
-                });
                 _ = material.release();
                 self.allocator.free(entry.key_ptr.*);
             }
@@ -431,13 +454,8 @@ pub const ResourceManager = struct {
             var iter = self.meshes.iterator();
             while (iter.next()) |entry| {
                 const mesh = entry.value_ptr.*;
-                const ref_count = mesh.ref_count.load(.monotonic);
                 total_meshes += 1;
 
-                std.debug.print("Mesh '{s}' has {d} references\n", .{
-                    entry.key_ptr.*,
-                    ref_count,
-                });
                 _ = mesh.release();
                 self.allocator.free(entry.key_ptr.*);
             }
@@ -445,21 +463,13 @@ pub const ResourceManager = struct {
         }
 
 
-        
-
-
         // Clean up textures (no dependencies)
         {
             var iter = self.textures.iterator();
             while (iter.next()) |entry| {
                 const texture = entry.value_ptr.*;
-                const ref_count = texture.ref_count.load(.monotonic);
                 total_textures += 1;
 
-                std.debug.print("Texture '{s}' has {d} references\n", .{
-                    entry.key_ptr.*,
-                    ref_count,
-                });
                 _ = texture.release();
                 self.allocator.free(entry.key_ptr.*);
             }
@@ -472,13 +482,8 @@ pub const ResourceManager = struct {
             var iter = self.shaders.iterator();
             while (iter.next()) |entry| {
                 const shader = entry.value_ptr.*;
-                const ref_count = shader.ref_count.load(.monotonic);
                 total_shaders += 1;
 
-                std.debug.print("Shader '{s}' has {d} references\n", .{
-                    entry.key_ptr.*,
-                    ref_count,
-                });
                 _ = shader.release();
                 self.allocator.free(entry.key_ptr.*);
             }
@@ -486,15 +491,17 @@ pub const ResourceManager = struct {
         }
 
 
-        // Print summary
-        std.debug.print("\n=== Resource Manager Cleanup Summary ===\n", .{});
-        std.debug.print("Models in manager: {d}\n", .{total_models});
-        std.debug.print("Meshes in manager: {d}\n", .{total_meshes});
-        std.debug.print("Materials in manager: {d}\n", .{total_materials});
-        std.debug.print("Textures in manager: {d}\n", .{total_textures});
-        std.debug.print("Shaders in manager: {d}\n", .{total_shaders});
-        std.debug.print("Total resources in manager: {d}\n", .{total_models + total_meshes + total_materials + total_textures + total_shaders});
-        std.debug.print("=== Resource Manager Cleanup Complete ===\n\n", .{});
+        // Print summary of resource counts
+        std.debug.print("\n=== Resource Manager Cleanup Summary ===\n\n", .{});
+
+        std.debug.print("Models left in manager: {d}\n", .{total_models});
+        std.debug.print("Meshes left in manager: {d}\n", .{total_meshes});
+        std.debug.print("Materials left in manager: {d}\n", .{total_materials});
+        std.debug.print("Textures left in manager: {d}\n", .{total_textures});
+        std.debug.print("Shaders left in manager: {d}\n", .{total_shaders});
+        std.debug.print("Total resources left in manager: {d}\n", .{total_models + total_meshes + total_materials + total_textures + total_shaders});
+        
+        std.debug.print("\n=== Resource Manager Cleanup Complete ===\n\n", .{});
 
         self.allocator.destroy(self);
     }
@@ -604,14 +611,113 @@ pub const ResourceManager = struct {
         return try self.allocator.dupe(u8, name);
     }
 
-    // Type-specific resource name lookup functions
-    //fn getModelName(self: *ResourceManager, resource: *Model) ?[]const u8 {}
+    /// Collect reference counts for all resources before cleanup
+    fn collectResourceRefs(
+        self: *ResourceManager,
+        model_refs: *std.ArrayList(ResourceRefInfo),
+        mesh_refs: *std.ArrayList(ResourceRefInfo),
+        material_refs: *std.ArrayList(ResourceRefInfo),
+        texture_refs: *std.ArrayList(ResourceRefInfo),
+        shader_refs: *std.ArrayList(ResourceRefInfo),
+    ) !void {
+        // Collect model reference counts
+        {
+            var iter = self.models.iterator();
+            while (iter.next()) |entry| {
+                const model = entry.value_ptr.*;
+                const name = try self.allocator.dupe(u8, entry.key_ptr.*);
+                errdefer self.allocator.free(name);
+                
+                try model_refs.append(.{
+                    .name = name,
+                    .resource_type = .Model,
+                    .ref_count = model.ref_count.load(.monotonic),
+                });
+            }
+        }
 
-    //fn getMeshName(self: *ResourceManager, resource: *Mesh) ?[]const u8 {}
+        // Collect mesh reference counts
+        {
+            var iter = self.meshes.iterator();
+            while (iter.next()) |entry| {
+                const mesh = entry.value_ptr.*;
+                const name = try self.allocator.dupe(u8, entry.key_ptr.*);
+                errdefer self.allocator.free(name);
+                
+                try mesh_refs.append(.{
+                    .name = name,
+                    .resource_type = .Mesh,
+                    .ref_count = mesh.ref_count.load(.monotonic),
+                });
+            }
+        }
 
-    //fn getMaterialName(self: *ResourceManager, resource: *Material) ?[]const u8 {}
+        // Collect material reference counts
+        {
+            var iter = self.materials.iterator();
+            while (iter.next()) |entry| {
+                const material = entry.value_ptr.*;
+                const name = try self.allocator.dupe(u8, entry.key_ptr.*);
+                errdefer self.allocator.free(name);
+                
+                try material_refs.append(.{
+                    .name = name,
+                    .resource_type = .Material,
+                    .ref_count = material.ref_count.load(.monotonic),
+                });
+            }
+        }
 
-    //fn getTextureName(self: *ResourceManager, resource: *Texture) ?[]const u8 {}
+        // Collect texture reference counts
+        {
+            var iter = self.textures.iterator();
+            while (iter.next()) |entry| {
+                const texture = entry.value_ptr.*;
+                const path = try self.allocator.dupe(u8, entry.key_ptr.*);
+                errdefer self.allocator.free(path);
+                
+                try texture_refs.append(.{
+                    .name = path,
+                    .resource_type = .Texture,
+                    .ref_count = texture.ref_count.load(.monotonic),
+                });
+            }
+        }
 
-    //fn getShaderName(self: *ResourceManager, resource: *Shader) ?[]const u8 {}
+        // Collect shader reference counts
+        {
+            var iter = self.shaders.iterator();
+            while (iter.next()) |entry| {
+                const shader = entry.value_ptr.*;
+                const name = try self.allocator.dupe(u8, entry.key_ptr.*);
+                errdefer self.allocator.free(name);
+                
+                try shader_refs.append(.{
+                    .name = name,
+                    .resource_type = .Shader,
+                    .ref_count = shader.ref_count.load(.monotonic),
+                });
+            }
+        }
+    }
+
+
+    /// Print reference count information for a specific type of resource
+    fn printRefCounts(self: *ResourceManager, res_type: ResourceType, refs: std.ArrayList(ResourceRefInfo)) void {
+        std.debug.print("\n--- {s} Reference Counts Before Cleanup ---\n", .{@tagName(res_type)});
+        
+        if (refs.items.len == 0) {
+            std.debug.print("No {s} resources found.\n", .{@tagName(res_type)});
+            return;
+        }
+        
+        var total_refs: u32 = 0;
+        for (refs.items) |ref_info| {
+            std.debug.print("{s} - Refs: {d}\n", .{ref_info.name, ref_info.ref_count});
+            total_refs += ref_info.ref_count;
+            self.allocator.free(ref_info.name); // Free the duplicated ID string
+        }
+        
+        std.debug.print("Total reference count for {s}: {d}\n", .{@tagName(res_type), total_refs});
+    }
 };
