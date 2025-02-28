@@ -16,10 +16,10 @@ const Mat4 = @import("../math/matrix.zig").Mat4;
 pub const Camera = struct {
     active_renderer: *Renderer,
 
-    position: Vec3 = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
-    target: Vec3 = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
-    up: Vec3 = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
-    forward: Vec3 = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
+    position: Vec3(f32) = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
+    target: Vec3(f32) = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
+    up: Vec3(f32) = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
+    forward: Vec3(f32) = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
 
     view_matrix: Mat4 = Mat4.identity(),
     projection_matrix: Mat4 = Mat4.identity(),
@@ -126,20 +126,20 @@ pub const Camera = struct {
     }
 
     /// Get the forward direction vector
-    pub fn getForwardVector(self: *const Camera) Vec3 {
+    pub fn getForwardVector(self: *const Camera) Vec3(f32) {
         return self.forward;
     }
 
 
     /// Set the camera position and update the view matrix
-    pub fn setPosition(self: *Camera, position: Vec3) void {
+    pub fn setPosition(self: *Camera, position: Vec3(f32)) void {
         self.position = position;
         self.updateViewMatrix();
     }
 
 
     /// Set the camera target and update the view matrix
-    pub fn lookAt(self: *Camera, target: Vec3) void {
+    pub fn lookAt(self: *Camera, target: Vec3(f32)) void {
         self.target = target;
         self.updateViewMatrix();
     }
@@ -148,7 +148,7 @@ pub const Camera = struct {
     /// Update the view matrix based on the current position, target, and up vector.
     pub fn updateViewMatrix(self: *Camera) void {
         // Calculate forward vector
-        self.forward = Vec3.normalize(Vec3.subtract(self.target, self.position));
+        self.forward = self.target.subtract(self.position).normalize();
         
         // Create the view matrix
         self.view_matrix = Mat4.lookAt(
@@ -272,7 +272,7 @@ pub const CameraMouseController = struct {
         const rad_yaw = std.math.degreesToRadians(self.yaw);
         const rad_pitch = std.math.degreesToRadians(self.pitch);
 
-        var direction = Vec3{
+        var direction: Vec3(f32) = .{
             .x = @cos(rad_yaw) * @cos(rad_pitch),
             .y = @sin(rad_pitch),
             .z = @sin(rad_yaw) * @cos(rad_pitch),
