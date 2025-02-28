@@ -39,13 +39,13 @@ pub const Mat4 = struct {
 }
 
     /// Creates a view matrix using a standard look-at formulation.
-    pub fn lookAt(eye: Vec3, target: Vec3, up: Vec3) Mat4 {
+    pub fn lookAt(eye: Vec3(f32), target: Vec3(f32), up: Vec3(f32)) Mat4 {
         // Compute forward vector (from eye to target)
-        const f = Vec3.normalize(Vec3.subtract(target, eye));
+        const f = target.subtract(eye).normalize();
         // Compute right vector
-        const s = Vec3.normalize(Vec3.cross(f, up));
+        const s = f.cross(up).normalize();
         // Compute new up vector
-        const u = Vec3.cross(s, f);
+        const u = s.cross(f);
 
         // Return in column-major order (OpenGL convention)
         return Mat4{
