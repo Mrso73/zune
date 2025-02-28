@@ -34,7 +34,7 @@ pub fn main() !void {
     defer renderer.release();
 
     var resource_manager = try zune.graphics.ResourceManager.create(allocator);
-    defer resource_manager.releaseAll();
+    defer resource_manager.releaseAll() catch {};
 
 
     // ==== Set values ==== //
@@ -44,7 +44,7 @@ pub fn main() !void {
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
-    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 0.0});
+    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 5.0});
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
     const initial_mouse_pos = window.input.?.getMousePosition();
@@ -60,10 +60,11 @@ pub fn main() !void {
 
     var main_cube_transform = zune.ecs.components.TransformComponent.identity();
 
-    const main_cube_shader = try resource_manager.createColorShader();
+    const main_cube_shader = try resource_manager.createColorShader("main_cube_shader");
     const main_cube_material = try resource_manager.createMaterial("main_cube_material", main_cube_shader, .{ 0.2, 0.6, 0.8, 1.0 }, null);
     //const main_cube_material = try resource_manager.autoCreateMaterial("material_", main_cube_shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
-    const main_cube_mesh = try resource_manager.createCubeMesh();
+
+    const main_cube_mesh = try resource_manager.createCubeMesh("main_cube_mesh");
     var main_cube_model = try resource_manager.createModel("main_cube_model");
     //var main_cube_model = try resource_manager.autoCreateModel("model_");
     
@@ -77,6 +78,7 @@ pub fn main() !void {
 
         // ==== Update Variables ==== \\  
         // Get delta time
+        time.update();
         const dt = time.getDelta();
 
 
