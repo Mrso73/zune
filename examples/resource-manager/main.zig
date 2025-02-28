@@ -61,8 +61,8 @@ pub fn main() !void {
     var main_cube_transform = zune.ecs.components.TransformComponent.identity();
 
     const main_cube_shader = try resource_manager.createColorShader("main_cube_shader");
-    const main_cube_material = try resource_manager.createMaterial("main_cube_material", main_cube_shader, .{ 0.2, 0.6, 0.8, 1.0 }, null);
-    //const main_cube_material = try resource_manager.autoCreateMaterial("material_", main_cube_shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
+    //const main_cube_material = try resource_manager.createMaterial("main_cube_material", main_cube_shader, .{ 0.2, 0.6, 0.8, 1.0 }, null);
+    const main_cube_material = try resource_manager.autoCreateMaterial("autogen_material", main_cube_shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
 
     const main_cube_mesh = try resource_manager.createCubeMesh("main_cube_mesh");
     var main_cube_model = try resource_manager.createModel("main_cube_model");
@@ -119,11 +119,14 @@ pub fn main() !void {
     }
             
     //try resource_manager.releaseModel("main_cube_model");
-    try resource_manager.models.releaseResourceByPtr(main_cube_model);
+    //try resource_manager.models.releaseResourceByPtr(main_cube_model);
+    
     //try resource_manager.releaseMesh("standard_cube_mesh");
-    try resource_manager.meshes.releaseResourceByPtr(main_cube_mesh);
+    //try resource_manager.meshes.releaseResourceByPtr(main_cube_mesh);
+
     //try resource_manager.releaseMaterial("main_cube_material");
-    try resource_manager.materials.releaseResourceByPtr(main_cube_material);
+    //try resource_manager.materials.releaseResourceByPtr(main_cube_material);
+
     //try resource_manager.releaseShader("color_shader");
-    try resource_manager.shaders.releaseResourceByPtr(main_cube_shader);
+    //try resource_manager.shaders.releaseResourceByPtr(main_cube_shader);
 }

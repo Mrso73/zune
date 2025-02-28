@@ -70,20 +70,36 @@ pub const ResourceManager = struct {
     // ============================================================
 
 
-    /// Create a model with the given name
+    /// Create a Model with the given name
     pub fn createModel(self: *ResourceManager, name: []const u8) !*Model {
         return try self.models.createResource(name, Model.create, .{});
     }
 
-    /// Release a reference to a model
+    /// Create a Model with a generated name
+    pub fn autoCreateModel(self: *ResourceManager, prefix: []const u8) !*Model {
+        const name = try self.models.generateUniqueName(prefix);
+        defer self.models.allocator.free(name); // Free the generated unique name after duplicating in createResource.
+
+        return try self.models.createResource(name, Model.create, .{});
+    }
+
+    /// Release a reference to a Model
     pub fn releaseModel(self: *ResourceManager, name: []const u8) !void {
         return try self.models.releaseResource(name);
     }
   
   
     
-    /// Create a mesh with the given parameters
+    /// Create a Mesh with the given parameters
     pub fn createMesh(self: *ResourceManager, name: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
+        return try self.meshes.createResource(name, Mesh.create, .{data, indices, has_normals});
+    }
+
+    /// Create a Mesh with a generated name
+    pub fn autoCreateMesh(self: *ResourceManager, prefix: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
+        const name = try self.meshes.generateUniqueName(prefix);
+        defer self.meshes.allocator.free(name); // Free the generated unique name after duplicating in createResource.
+
         return try self.meshes.createResource(name, Mesh.create, .{data, indices, has_normals});
     }
 
@@ -91,47 +107,71 @@ pub const ResourceManager = struct {
         return try self.meshes.createResource(name, Mesh.createCube, .{});
     }
 
-    /// Release a reference to a mesh
+    /// Release a reference to a Mesh
     pub fn releaseMesh(self: *ResourceManager, name: []const u8) !void {
         return try self.meshes.releaseResource(name);
     }
 
 
 
-    /// Create a material with the given parameters
+    /// Create a Material with the given parameters
     pub fn createMaterial(self: *ResourceManager, name: []const u8, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
         return try self.materials.createResource(name, Material.create, .{shader, color, texture});
     }
 
-    /// Release a reference to a material
+    /// Create a Material with a generated name
+    pub fn autoCreateMaterial(self: *ResourceManager, prefix: []const u8, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
+        const name = try self.materials.generateUniqueName(prefix);
+        defer self.materials.allocator.free(name); // Free the generated unique name after duplicating in createResource.
+
+        return try self.materials.createResource(name, Material.create, .{shader, color, texture});
+    }
+
+    /// Release a reference to a Material
     pub fn releaseMaterial(self: *ResourceManager, name: []const u8) !void {
         return try self.materials.releaseResource(name);
     }
 
 
 
-    /// Load a texture from file, or return existing if already loaded
+    /// Load a Texture from file, or return existing if already loaded
     pub fn createTexture(self: *ResourceManager, path: []const u8) !*Texture {
         return try self.textures.createResource(path, Texture.createFromFile, .{path});
     }
 
-    /// Release a reference to a texture
+    /// Create a Texture with a generated name
+    pub fn autoCreateTexture(self: *ResourceManager, prefix: []const u8, path: []const u8) !*Texture {
+        const name = try self.textures.generateUniqueName(prefix);
+        defer self.textures.allocator.free(name); // Free the generated unique name after duplicating in createResource.
+
+        return try self.textures.createResource(name, Texture.createFromFile, .{path});
+    }
+
+    /// Release a reference to a Texture
     pub fn releaseTexture(self: *ResourceManager, path: []const u8) !void {
         return try self.textures.releaseResource(path);
     }
 
 
 
-    /// Create a shader from source code
+    /// Create a hader from source code
     pub fn createShader(self: *ResourceManager, name: []const u8, vertex_source: []const u8, fragment_source: []const u8) !*Shader {
         return try self.shaders.createResource(name, Shader.create, .{vertex_source, fragment_source});
     }
 
-    pub fn createColorShader(self: *ResourceManager, name: []const u8) !*Shader {
-    return try self.shaders.createResource(name, Shader.createColorShader, .{});
-}
+    /// Create a Shader with a generated name
+    pub fn autoCreateShader(self: *ResourceManager, prefix: []const u8, vertex_source: []const u8, fragment_source: []const u8) !*Shader {
+        const name = try self.shaders.generateUniqueName(prefix);
+        defer self.shaders.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
-    /// Release a reference to a shader
+        return try self.shaders.createResource(name, Shader.create, .{vertex_source, fragment_source});
+    }
+
+    pub fn createColorShader(self: *ResourceManager, name: []const u8) !*Shader {
+        return try self.shaders.createResource(name, Shader.createColorShader, .{});
+    }
+
+    /// Release a reference to a Shader
     pub fn releaseShader(self: *ResourceManager, name: []const u8) !void {
         return try self.shaders.releaseResource(name);
     }
@@ -195,36 +235,6 @@ pub const ResourceManager = struct {
     // ============================================================
     // Private Helper Functions
     // ============================================================
-
-    /// Generate a unique name for a resource type widh a prefix
-    fn generateUniqueName(self: *ResourceManager, resource_type: ResourceType, prefix: []const u8) ![]const u8 {
-        // Use a static counter for each resource type to ensure uniqueness
-        var buffer: [64]u8 = undefined;
-
-        const used_id = switch (resource_type) {
-            .Model => self.next_model_id,
-            .Mesh => self.next_mesh_id,
-            .Material => self.next_material_id,
-            .Texture => self.next_texture_id,
-            .Shader => self.next_shader_id,
-        };
-
-
-        // Create custom name using prefix and the next recourse type id
-        const name = try std.fmt.bufPrint(&buffer, "{s}{d}", .{prefix, used_id});
-        
-        // Increment the appropriate counter
-        switch (resource_type) {
-            .Model => self.next_model_id += 1,
-            .Mesh => self.next_mesh_id += 1,
-            .Material => self.next_material_id += 1,
-            .Texture => self.next_texture_id += 1,
-            .Shader => self.next_shader_id += 1,
-        }
-        
-        // Return a duplicate that will be owned by the resource manager
-        return try self.allocator.dupe(u8, name);
-    }
     
 
     /// Print reference count information for a specific type of resource
@@ -262,6 +272,13 @@ pub fn ResourceCollection(comptime T: type) type {
         allocator: std.mem.Allocator,
         resources: std.StringHashMap(*T),
 
+        next_id: u32 = 1,
+
+
+        // ============================================================
+        // Public API: Creation Functions
+        // ============================================================
+
         pub fn init(allocator: std.mem.Allocator) Self {
             return Self{
                 .allocator = allocator,
@@ -269,10 +286,10 @@ pub fn ResourceCollection(comptime T: type) type {
             };
         }
 
-        pub fn deinit(self: *Self) void {
-            self.resources.deinit();
-        }
-        
+
+        // ============================================================
+        // Public API: Resources Manipulation Functions
+        // ============================================================
 
         /// Create or get a resource with the given name
         /// If the resource already exists, increments its reference count and returns it
@@ -382,6 +399,33 @@ pub fn ResourceCollection(comptime T: type) type {
                 self.allocator.free(entry.key_ptr.*);
             }
             return count;
+        }
+
+
+        // ============================================================
+        // Public API: Destruction Functions
+        // ============================================================
+
+        pub fn deinit(self: *Self) void {
+            self.resources.deinit();
+        }
+
+
+        // ============================================================
+        // Private Helper Functions
+        // ============================================================
+
+        /// Generate a unique name for a resource widh a prefix
+        pub fn generateUniqueName(self: *Self, prefix: []const u8) ![]const u8 {
+
+            // Allocate the formatted string dynamically
+            const tmp_name = try std.fmt.allocPrint(self.allocator, "{s}{d}", .{ prefix, self.next_id });
+            defer self.allocator.free(tmp_name); // Make sure the temporary allocation is freed.
+
+            // Duplicate the string to get an good sized allocation.
+            const name = try self.allocator.dupe(u8, tmp_name);
+            self.next_id += 1;
+            return name;
         }
     };
 }
