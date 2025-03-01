@@ -75,7 +75,8 @@ pub fn main() !void {
     try registry.registerComponent(zune.ecs.components.ModelComponent);
 
     try registry.registerComponent(Velocity);
-    try registry.registerComponent(Lifetime);
+    //try registry.registerComponent(Lifetime);
+    try registry.registerDeferedComponent(Lifetime, "customCleanup");
 
 
     // Create random generater
@@ -145,6 +146,10 @@ const Velocity = struct {
 
 const Lifetime = struct {
     remaining: f32,
+
+    pub fn customCleanup(self: *Lifetime) void {
+        std.debug.print("Deinit: {any}\n", .{self});
+    }
 };
 
 

@@ -9,6 +9,7 @@ pub const EcsError = error{
     InvalidEntity,
     SystemError,
     OutOfMemory,
+    DeinitFunctionNotFound
 };
 
 
@@ -185,7 +186,7 @@ pub const Registry = struct {
         remove_fn: *const fn(*anyopaque, EntityId) EcsError!void,
 
         /// Create interface to a component storage
-         fn create(comptime T: type, store: *ComponentStorage(T), comptime auto_deinit: bool) ComponentStorageInterface {
+        fn create(comptime T: type, store: *ComponentStorage(T), comptime deinit_fn_name: ?[]const u8) ComponentStorageInterface {
             return .{
                 .ptr = store,
 
@@ -193,16 +194,37 @@ pub const Registry = struct {
                 .deinit_fn = struct {
                     fn deinitFn(ptr: *anyopaque, allocator: std.mem.Allocator) void {
                         const storage = @as(*ComponentStorage(T), @ptrCast(@alignCast(ptr)));
-                        
-                        // If auto_deinit is enabled and component has deinit method, call it
-                        if (auto_deinit and @hasDecl(T, "deinit")) {
-                            for (storage.components.items) |item| {
-                                item.component.deinit();
+                           
+                        // Use custom deinit function name if provided
+                        if (deinit_fn_name) |fn_name| {
+
+                            // Check if the component has the specified deinit function
+                            if(std.meta.hasFn(T, fn_name)) {
+                                const DeinitFn = @field(T, fn_name);
+                                var i:usize = 0;
+
+                                while(i<storage.components.items.len):(i+=1){
+                                    var item = storage.components.items[i];
+                                    DeinitFn(&item.component);
+                                }
+
+                            } else {
+                                // Function not found
+                                std.debug.print("Warning: Deinit function '{s}' not found on type {s}\n", .{fn_name, @typeName(T)});
                             }
-                        }
+                        } 
                         
                         storage.deinit();
                         allocator.destroy(storage); // Free the storage struct itself
+                    }
+
+                    // Helper to check if a type is a pointer to T
+                    fn isPointerToT(comptime PtrType: type, comptime TargetType: type) bool {
+                        const type_info = @typeInfo(PtrType);
+                        return switch (type_info) {
+                            .Pointer => |ptr| @typeInfo(ptr.child) == @typeInfo(TargetType),
+                            else => false,
+                        };
                     }
                 }.deinitFn,
 
@@ -299,15 +321,15 @@ pub const Registry = struct {
     }
 
 
-    /// Register a component type with automatic cleanup
-    pub fn registerAutoDeinitComponent(self: *Self, comptime T: type) !void {
-        try self.registerComponentInternal(T, true);
+    /// Register a component type with automatic cleanup using specified deinit function
+    pub fn registerDeferedComponent(self: *Self, comptime T: type, comptime deinit_fn_name: []const u8) !void {        
+        try self.registerComponentInternal(T, deinit_fn_name);
     }
 
 
     /// Register a component type
     pub fn registerComponent(self: *Self, comptime T: type) !void {
-        try self.registerComponentInternal(T, false);
+        try self.registerComponentInternal(T, null);
     }
 
 
@@ -368,7 +390,7 @@ pub const Registry = struct {
     // ============================================================
 
     /// Internal function to register a component with optional auto-deinit
-    fn registerComponentInternal(self: *Self, comptime T: type, comptime auto_deinit: bool) !void {
+    fn registerComponentInternal(self: *Self, comptime T: type, comptime deinit_fn_name: ?[]const u8) !void {
         const type_id = std.hash.Wyhash.hash(0, @typeName(T));
         if (self.component_stores.contains(type_id)) {
             return; // Already registered
@@ -381,7 +403,7 @@ pub const Registry = struct {
         // Add to component stores
         try self.component_stores.put(
             type_id,
-            ComponentStorageInterface.create(T, store, auto_deinit)
+            ComponentStorageInterface.create(T, store, deinit_fn_name)
         );
     }
 
