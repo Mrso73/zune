@@ -171,6 +171,10 @@ pub const ResourceManager = struct {
         return try self.shaders.createResource(name, Shader.createColorShader, .{});
     }
 
+    pub fn createTextureShader(self: *ResourceManager, name: []const u8) !*Shader {
+        return try self.shaders.createResource(name, Shader.createTextureShader, .{});
+    }
+
     /// Release a reference to a Shader
     pub fn releaseShader(self: *ResourceManager, name: []const u8) !void {
         return try self.shaders.releaseResource(name);
