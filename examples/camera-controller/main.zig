@@ -1,24 +1,18 @@
 const std = @import("std");
 const zune = @import("zune"); // The engine
 
-
 const WINDOW_WIDTH = 1200;
 const WINDOW_HEIGHT = 900;
 
+
 pub fn main() !void {
 
-    // ==== Initializing Everything ==== \\
+    // ==== Initializing Everything ==== //
+
     // Initialize allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-
-
-    //setup time utitilites
-    var time = zune.core.Time.init(.{
-        .target_fps = 120,
-        .fixed_timestep = 1.0 / 60.0,
-    });
+    defer _ = gpa.deinit();
 
 
     // create a window
@@ -31,14 +25,34 @@ pub fn main() !void {
     });
     defer window.release();
 
+    const window_size = window.getSize();
 
-    // create a renderer
-    var renderer = try zune.graphics.Renderer.create(allocator);
+    window.centerWindow();
+    window.setCursorMode(.disabled);
+
+
+    // create a Renderer
+    var renderer = try zune.graphics.Renderer.create(allocator, .{
+        .clear_color = .{ 0.1, 0.1, 0.1, 1.0 },
+        .initial_viewport = .{
+            .x = 0,
+            .y = 0,
+            .width = @intCast(window_size.width),
+            .height = @intCast(window_size.height)
+        }
+    });
     defer renderer.release();
 
-    const window_size = window.getSize();
-    renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
 
+    //setup time utitilites
+    var time = zune.core.Time.init(.{
+        .target_fps = 120,
+        .fixed_timestep = 1.0 / 60.0,
+    }); 
+
+
+
+    // ==== Set Variables ==== //
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
@@ -51,18 +65,7 @@ pub fn main() !void {
     @as(f32, @floatCast(initial_mouse_pos.x)), @as(f32, @floatCast(initial_mouse_pos.y)));
     
 
-    window.centerWindow();
-    window.setCursorMode(.disabled);
-    //renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
-
-
-
-
-
-
-
-
-    // ==== Create a mesh and model ==== \\
+    // Create a mesh and model
     var transform_1 = zune.ecs.components.TransformComponent.identity();
     var transform_2 = zune.ecs.components.TransformComponent.identity();
 
@@ -73,7 +76,6 @@ pub fn main() !void {
     var material_2 = try zune.graphics.Material.create(allocator, shader, .{ 0.5, 0.2, 0.3, 1.0 }, null);
     defer _ = material_1.release();
     defer _ = material_2.release();
-
 
     var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
     defer _ = cube_mesh.release();
@@ -86,28 +88,24 @@ pub fn main() !void {
     try cube_model_1.addMeshMaterial(cube_mesh, material_1);
     try cube_model_2.addMeshMaterial(cube_mesh, material_2);
 
-
-    // set position
     transform_2.setPosition(0.0, 2, 0.0);
     
+
+
+    // ==== Main Loop ==== //
 
     // Set viewport
     const i: f32 = 0.05;
     while (!window.shouldClose()) {
 
-
-
-
-        // ==== Update Variables ==== \\  
+        // ==== Update Variables ==== //
         time.update();
 
         // Get delta time
         const dt = time.getDelta();
 
 
-
-
-        // ==== Process Input ==== \\     
+        // ==== Process Input ==== //      
         const mouse_pos = window.input.?.getMousePosition();   
         camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), dt);
 
@@ -117,9 +115,7 @@ pub fn main() !void {
         }
 
 
-
-
-        // ==== Update Program ==== \\
+        // ==== Update Program ==== //
         // Fixed updates (at fixed timestep intervals)
         while (time.shouldFixedUpdate()) {
             const fixed_dt = time.getFixedTimestep();
@@ -130,9 +126,7 @@ pub fn main() !void {
         transform_2.rotate(i, i / 2, 0.0);
 
 
-
-
-        // ==== Drawing to the screen ==== \\
+        // ==== Drawing to the screen ==== //
         // Clear the window
         renderer.clear();
 
@@ -142,7 +136,6 @@ pub fn main() !void {
         try perspective_camera.drawModel(cube_model_1, &transform_1.world_matrix);
         try perspective_camera.drawModel(cube_model_2, &transform_2.world_matrix);
     
-
         try window.pollEvents();
         window.swapBuffers();
     }

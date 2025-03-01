@@ -4,13 +4,16 @@ const zune = @import("zune");
 const WINDOW_WIDTH = 1200;
 const WINDOW_HEIGHT = 900;
 
+
 pub fn main() !void {
 
-    // --- Initialize Everything --- //
+    // ==== Initializing Everything ==== //
 
+    // Initialize allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
+
 
     // create a window
     var window = try zune.core.Window.create(allocator, .{
@@ -19,50 +22,71 @@ pub fn main() !void {
         .height = WINDOW_HEIGHT,
         .transparent = false,
         .decorated = true,
-        .with_input_system = true,
     });
     defer window.release();
 
-    // create a renderer
-    var renderer = try zune.graphics.Renderer.create(allocator);
+    const window_size = window.getSize();
+
+    window.centerWindow();
+    window.setCursorMode(.disabled);
+
+
+    // create a Renderer
+    var renderer = try zune.graphics.Renderer.create(allocator, .{
+        .clear_color = .{ 0.1, 0.1, 0.1, 1.0 },
+        .initial_viewport = .{
+            .x = 0,
+            .y = 0,
+            .width = @intCast(window_size.width),
+            .height = @intCast(window_size.height)
+        }
+    });
     defer renderer.release();
+
+
+    // create a Resource Manager
+    var resource_manager = try zune.graphics.ResourceManager.create(allocator);
+    defer resource_manager.releaseAll() catch {};
+
 
     // Initialize ECS registry
     var registry = try zune.ecs.Registry.create(allocator);
-    defer registry.release();
+    defer registry.release();    
 
 
-    // --- Set Variables --- //
+    //setup time utitilites
+    var time = zune.core.Time.init(.{
+        .target_fps = 120,
+        .fixed_timestep = 1.0 / 60.0,
+    });
+
+
+
+    // ==== Set Variables ==== //
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
     perspective_camera.setPosition(.{ .x = 0.0, .y = 3.0, .z = 15.0 });
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0 });
 
-    window.centerWindow();
-    window.setCursorMode(.disabled);
 
-
-    // --- Create the model --- //
-
+    // Create the model
     var txtr_shader = try zune.graphics.Shader.createTextureShader(allocator);
     defer _ = txtr_shader.release();
-
     var texture = try zune.graphics.Texture.createFromFile(allocator, "examples/game-example/txtr.png");
     defer _ = texture.release();
-
     var material = try zune.graphics.Material.create(allocator, txtr_shader, .{ 1.0, 1.0, 1.0, 1.0 }, texture);
     defer _ = material.release();
-
     var cube_mesh = try zune.graphics.Mesh.createCube(allocator);
     defer _ = cube_mesh.release();
-
     var cube_model = try zune.graphics.Model.create(allocator);
     defer _ = cube_model.release();
 
     try cube_model.addMeshMaterial(cube_mesh, material);
 
-    // --- Setup the ECS system --- //
+
+
+    // ==== Setup ECS ==== //
 
     // Register components
     try registry.registerComponent(zune.ecs.components.TransformComponent);
@@ -87,22 +111,28 @@ pub fn main() !void {
     // Set Model to render
     try registry.addComponent(entity, zune.ecs.components.ModelComponent.init(cube_model));
 
-    // --- Main Loop --- //
 
-    while (!window.shouldClose()) {        
 
-        // ==== Process Input ==== \\
-        //const mouse_pos = input.getMousePosition();
-        if (window.input.?.isKeyPressed(.KEY_ESCAPE)) {
-            window.setTitle("miauw");
-        }
+    // ==== Main Loop ==== //
 
+    while (!window.shouldClose()) {      
+
+        // ==== Update Variables ==== //
+        time.update();  
+
+
+        // ==== Process Input ==== //
+        //const mouse_pos = window.input.?.getMousePosition();  
+        if (window.input.?.isKeyPressed(.KEY_ESCAPE)) window.setTitle("miauw");
         if (window.input.?.isKeyReleased(.KEY_ESCAPE)) break;
 
+
+        // ==== Update Program ==== //
         try playerMovementSystem(registry, window.input.?);
 
-        renderer.clear();
 
+        // ==== Drawing to the screen ==== //
+        renderer.clear();
         try render(perspective_camera, registry);
 
         try window.pollEvents();
@@ -110,11 +140,13 @@ pub fn main() !void {
     }
 }
 
+
 const Velocity = struct {
     x: f32,
     y: f32,
     z: f32,
 };
+
 
 fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !void {
     var query = try registry.query(struct {
@@ -154,6 +186,7 @@ fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !
         }
     }
 }
+
 
 pub fn render(camera: zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
     // Query for entities with all required components

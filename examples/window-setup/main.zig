@@ -7,11 +7,12 @@ const WINDOW_HEIGHT = 900;
 
 pub fn main() !void {
 
-    // ==== Initializing Everything ==== \\
+    // ==== Initializing Everything ==== //
+
     // Initialize allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
 
 
     // create a window
@@ -21,25 +22,41 @@ pub fn main() !void {
         .height = WINDOW_HEIGHT,
     });
     defer window.release();
+
+    const window_size = window.getSize();
+
+    window.centerWindow();
+    window.setCursorMode(.disabled);
     
 
-    // create a renderer
-    var renderer = try zune.graphics.Renderer.create(allocator);
+    // create a Renderer
+    var renderer = try zune.graphics.Renderer.create(allocator, .{
+        .clear_color = .{ 0.1, 0.1, 0.1, 1.0 },
+        .initial_viewport = .{
+            .x = 0,
+            .y = 0,
+            .width = @intCast(window_size.width),
+            .height = @intCast(window_size.height)
+        }
+    });
     defer renderer.release();
 
 
-    // Set values
-    const window_size = window.getSize();
-    renderer.setViewport(0, 0, @intCast(window_size.width), @intCast(window_size.height));
-    renderer.setClearColor(.{ 0.1, 0.1, 0.1, 1.0 });
 
-    window.centerWindow();
+    // ==== Main Loop ==== //
 
-
-    // Main loop
     while (!window.shouldClose()) {
+        
+        // ==== Update Variables ==== //
 
-        // Clear the window
+
+        // ==== Drawing to the screen ==== //
+
+
+        // ==== Update Program ==== //
+
+
+        // ==== Drawing to the screen ==== //
         renderer.clear();
 
         try window.pollEvents();
