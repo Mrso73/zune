@@ -227,8 +227,10 @@ pub const CameraMouseController = struct {
 
     /// Initialize the mouse controller with initial mouse position
     pub fn init(camera: *Camera, current_x_cursor: f32, current_y_cursor: f32) CameraMouseController {
-        const v = if (camera.forward.x != 0) camera.forward.z / camera.forward.x else std.math.pi;
-        const yaw = std.math.radiansToDegrees(if (camera.forward.z > 0) std.math.atan(v) else -std.math.atan(v));
+
+        // Calculate the yaw based on the forward vector (idk what is happening here)
+        const v = if (camera.forward.x != 0) camera.forward.z / camera.forward.x else null;
+        const yaw: f32 = if (v) | val | std.math.radiansToDegrees(if (camera.forward.z > 0) std.math.atan(val) else -std.math.atan(val)) else (if(camera.forward.z <= 0) -90.0 else 90.0);
 
         return .{
             .camera = camera,
