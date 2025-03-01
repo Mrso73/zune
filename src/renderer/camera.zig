@@ -125,6 +125,31 @@ pub const Camera = struct {
         }
     }
 
+
+    pub fn worldToScreen(self: Camera, point: Vec3(f32)) math.Vec2(f32) {
+        const M = self.getViewProjectionMatrix().data;
+        const v = point;
+
+        const x = M[0]*v.x + M[4]*v.y + M[8]*v.z + M[12];
+        const y = M[1]*v.x + M[5]*v.y + M[9]*v.z + M[13];
+        const w = M[3]*v.x + M[7]*v.y + M[11]*v.z + M[15];
+
+        if (w == 0) return .{};
+
+        return .{
+            .x = x/w,
+            .y = y/w,
+        };
+    }
+
+
+    /// Return wether point
+    pub fn inView(self: Camera, point: Vec3(f32)) bool {
+        _ = self;
+        const pos = worldToScreen(point);
+        return (@abs(pos.x) <= 1 and @abs(pos.y) < 1);
+    } 
+
     /// Get the forward direction vector
     pub fn getForwardVector(self: *const Camera) Vec3(f32) {
         return self.forward;
