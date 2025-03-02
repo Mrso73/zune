@@ -33,6 +33,33 @@ const ResourceRefInfo = struct {
 };
 
 
+pub const DebugConfig = struct {
+    // Controls if debug information is printed at all
+    enabled: bool = false,
+
+    // Controls for showing creation and deletion
+    show_res_creation: bool = true,
+    show_res_release: bool = true,
+
+    // Controls if reference counting should be printed
+    show_ref_counts: bool = true,
+    // Controls if cleanup summary should be printed
+    show_cleanup_summary: bool = true,
+    
+    // Controls which resource types to show debug info for
+    show_models: bool = true,
+    show_meshes: bool = true,
+    show_materials: bool = true,
+    show_textures: bool = true,
+    show_shaders: bool = true,
+    
+    // Default debug config
+    pub fn default() DebugConfig {
+        return .{};
+    }
+};
+
+
 pub const ResourceManager = struct {
     allocator: std.mem.Allocator,
 
@@ -43,24 +70,33 @@ pub const ResourceManager = struct {
     textures: ResourceCollection(Texture),
     shaders: ResourceCollection(Shader),
 
+    // Debug configuration
+    debug_config: DebugConfig,
+
 
     // ============================================================
     // Public API: Creation Functions
     // ============================================================
 
     /// Initialize a new resource manager
-    pub fn create(allocator: std.mem.Allocator) !*ResourceManager {
+    pub fn create(allocator: std.mem.Allocator, debug_config: ?DebugConfig) !*ResourceManager {
         const resource_manager_ptr = try allocator.create(ResourceManager);
         errdefer allocator.destroy(resource_manager_ptr);
 
         resource_manager_ptr.* = ResourceManager{
             .allocator = allocator,
+            .debug_config = debug_config orelse DebugConfig.default(),
             .models = ResourceCollection(Model).init(allocator),
             .meshes = ResourceCollection(Mesh).init(allocator),
             .materials = ResourceCollection(Material).init(allocator),
             .textures = ResourceCollection(Texture).init(allocator),
             .shaders = ResourceCollection(Shader).init(allocator),
         };
+
+        if (resource_manager_ptr.debug_config.enabled) {
+            std.debug.print("[RS]: ResourceManager Created\n", .{});
+        }
+
         return resource_manager_ptr;
     }   
 
@@ -72,6 +108,9 @@ pub const ResourceManager = struct {
 
     /// Create a Model with the given name
     pub fn createModel(self: *ResourceManager, name: []const u8) !*Model {
+        if (self.debug_config.show_res_creation and self.debug_config.show_models){
+            std.debug.print("[RS]: Creating Model: \"{s}\"\n", .{name});
+        }
         return try self.models.createResource(name, Model.create, .{});
     }
 
@@ -80,11 +119,18 @@ pub const ResourceManager = struct {
         const name = try self.models.generateUniqueName(prefix);
         defer self.models.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
+        if (self.debug_config.show_res_creation and self.debug_config.show_models){
+            std.debug.print("[RS]: AutoGenerating Model: \"{s}\"\n", .{prefix});
+        }
+
         return try self.models.createResource(name, Model.create, .{});
     }
 
     /// Release a reference to a Model
     pub fn releaseModel(self: *ResourceManager, name: []const u8) !void {
+        if (self.debug_config.show_res_release and self.debug_config.show_models){
+            std.debug.print("[RS]: Releasing Model: \"{s}\"\n", .{name});
+        }
         return try self.models.releaseResource(name);
     }
   
@@ -92,6 +138,9 @@ pub const ResourceManager = struct {
     
     /// Create a Mesh with the given parameters
     pub fn createMesh(self: *ResourceManager, name: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
+        if (self.debug_config.show_res_creation and self.debug_config.show_meshes){
+            std.debug.print("[RS]: Creating Mesh: \"{s}\"\n", .{name});
+        }
         return try self.meshes.createResource(name, Mesh.create, .{data, indices, has_normals});
     }
 
@@ -100,15 +149,27 @@ pub const ResourceManager = struct {
         const name = try self.meshes.generateUniqueName(prefix);
         defer self.meshes.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
+        if (self.debug_config.show_res_creation and self.debug_config.show_meshes){
+            std.debug.print("[RS]: AutoGenerating Mesh: \"{s}\"\n", .{name});
+        }
+
         return try self.meshes.createResource(name, Mesh.create, .{data, indices, has_normals});
     }
 
     pub fn createCubeMesh(self: *ResourceManager, name: []const u8) !*Mesh {
+        if (self.debug_config.show_res_creation and self.debug_config.show_meshes){
+            std.debug.print("[RS]: Creating Mesh: \"{s}\"\n", .{name});
+        }
+
         return try self.meshes.createResource(name, Mesh.createCube, .{});
     }
 
     /// Release a reference to a Mesh
     pub fn releaseMesh(self: *ResourceManager, name: []const u8) !void {
+        if (self.debug_config.show_res_release and self.debug_config.show_meshes){
+            std.debug.print("[RS]: Releasing Mesh: \"{s}\"\n", .{name});
+        }
+
         return try self.meshes.releaseResource(name);
     }
 
@@ -116,6 +177,10 @@ pub const ResourceManager = struct {
 
     /// Create a Material with the given parameters
     pub fn createMaterial(self: *ResourceManager, name: []const u8, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
+        if (self.debug_config.show_res_creation and self.debug_config.show_material){
+            std.debug.print("[RS]: Creating Material: \"{s}\"\n", .{name});
+        }
+
         return try self.materials.createResource(name, Material.create, .{shader, color, texture});
     }
 
@@ -124,11 +189,19 @@ pub const ResourceManager = struct {
         const name = try self.materials.generateUniqueName(prefix);
         defer self.materials.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
+        if (self.debug_config.show_res_creation and self.debug_config.show_materials){
+            std.debug.print("[RS]: AutoGenerating Material: \"{s}\"\n", .{name});
+        }
+
         return try self.materials.createResource(name, Material.create, .{shader, color, texture});
     }
 
     /// Release a reference to a Material
     pub fn releaseMaterial(self: *ResourceManager, name: []const u8) !void {
+        if (self.debug_config.show_res_release and self.debug_config.show_materials){
+            std.debug.print("[RS]: Releasing Material: \"{s}\"\n", .{name});
+        }
+
         return try self.materials.releaseResource(name);
     }
 
@@ -136,6 +209,10 @@ pub const ResourceManager = struct {
 
     /// Load a Texture from file, or return existing if already loaded
     pub fn createTexture(self: *ResourceManager, path: []const u8) !*Texture {
+        if (self.debug_config.show_res_creation and self.debug_config.show_textures){
+            std.debug.print("[RS]: Creating Texture: \"{s}\"\n", .{path});
+        }
+
         return try self.textures.createResource(path, Texture.createFromFile, .{path});
     }
 
@@ -144,11 +221,19 @@ pub const ResourceManager = struct {
         const name = try self.textures.generateUniqueName(prefix);
         defer self.textures.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
+        if (self.debug_config.show_res_creation and self.debug_config.show_textures){
+            std.debug.print("[RS]: AutoGenerate Texture: \"{s}\"\n", .{name});
+        }
+
         return try self.textures.createResource(name, Texture.createFromFile, .{path});
     }
 
     /// Release a reference to a Texture
     pub fn releaseTexture(self: *ResourceManager, path: []const u8) !void {
+        if (self.debug_config.show_res_release and self.debug_config.show_textures){
+            std.debug.print("[RS]: Release Texture: \"{s}\"\n", .{path});
+        }
+
         return try self.textures.releaseResource(path);
     }
 
@@ -156,6 +241,10 @@ pub const ResourceManager = struct {
 
     /// Create a hader from source code
     pub fn createShader(self: *ResourceManager, name: []const u8, vertex_source: []const u8, fragment_source: []const u8) !*Shader {
+        if (self.debug_config.show_res_creation and self.debug_config.show_shaders){
+            std.debug.print("[RS]: Create Shader: \"{s}\"\n", .{name});
+        }
+
         return try self.shaders.createResource(name, Shader.create, .{vertex_source, fragment_source});
     }
 
@@ -164,19 +253,35 @@ pub const ResourceManager = struct {
         const name = try self.shaders.generateUniqueName(prefix);
         defer self.shaders.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
+        if (self.debug_config.show_res_creation and self.debug_config.show_shaders){
+            std.debug.print("[RS]: AutoGenerate Shader: \"{s}\"\n", .{name});
+        }
+
         return try self.shaders.createResource(name, Shader.create, .{vertex_source, fragment_source});
     }
 
     pub fn createColorShader(self: *ResourceManager, name: []const u8) !*Shader {
+        if (self.debug_config.show_res_creation and self.debug_config.show_shaders){
+            std.debug.print("[RS]: Create Shader: \"{s}\"\n", .{name});
+        }
+
         return try self.shaders.createResource(name, Shader.createColorShader, .{});
     }
 
     pub fn createTextureShader(self: *ResourceManager, name: []const u8) !*Shader {
+        if (self.debug_config.show_res_creation and self.debug_config.show_shaders){
+            std.debug.print("[RS]: Create Shader: \"{s}\"\n", .{name});
+        }
+
         return try self.shaders.createResource(name, Shader.createTextureShader, .{});
     }
 
     /// Release a reference to a Shader
     pub fn releaseShader(self: *ResourceManager, name: []const u8) !void {
+        if (self.debug_config.show_res_release and self.debug_config.show_shaders){
+            std.debug.print("[RS]: Release Shader: \"{s}\"\n", .{name});
+        }
+
         return try self.shaders.releaseResource(name);
     }
 
@@ -184,7 +289,6 @@ pub const ResourceManager = struct {
 
     /// Clean up all resources and print debug info about remaining resources
     pub fn releaseAll(self: *ResourceManager) !void {
-        std.debug.print("\n=== Resource Manager Cleanup Start ===\n", .{});
         
         // Track counts for debug output
         var total_models: usize = 0;
@@ -194,11 +298,13 @@ pub const ResourceManager = struct {
         var total_shaders: usize = 0;
         
         // Print reference count information
-        self.printRefCounts(.Model, try self.models.collectRefInfo());
-        self.printRefCounts(.Mesh, try self.meshes.collectRefInfo());
-        self.printRefCounts(.Material, try self.materials.collectRefInfo());
-        self.printRefCounts(.Texture, try self.textures.collectRefInfo());
-        self.printRefCounts(.Shader, try self.shaders.collectRefInfo());
+        if (self.debug_config.enabled and self.debug_config.show_ref_counts) {
+            if (self.debug_config.show_models) self.printRefCounts(.Model, try self.models.collectRefInfo());
+            if (self.debug_config.show_meshes) self.printRefCounts(.Mesh, try self.meshes.collectRefInfo());
+            if (self.debug_config.show_materials) self.printRefCounts(.Material, try self.materials.collectRefInfo());
+            if (self.debug_config.show_textures) self.printRefCounts(.Texture, try self.textures.collectRefInfo());
+            if (self.debug_config.show_shaders) self.printRefCounts(.Shader, try self.shaders.collectRefInfo());
+        }
         
         // IMPORTANT: We release resources in REVERSE order of dependencies:
         // 1. Models (depend on Materials and Meshes)
@@ -221,16 +327,20 @@ pub const ResourceManager = struct {
         self.textures.deinit();
         self.shaders.deinit();
         
-        // Print summary of resource counts
-        std.debug.print("\n=== Resource Manager Cleanup Summary ===\n\n", .{});
-        
-        std.debug.print("Models left in manager: {d}\n", .{total_models});
-        std.debug.print("Meshes left in manager: {d}\n", .{total_meshes});
-        std.debug.print("Materials left in manager: {d}\n", .{total_materials});
-        std.debug.print("Textures left in manager: {d}\n", .{total_textures});
-        std.debug.print("Shaders left in manager: {d}\n", .{total_shaders});
-        std.debug.print("Total resources left in manager: {d}\n", .{total_models + total_meshes + total_materials + total_textures + total_shaders});
-        std.debug.print("\n=== Resource Manager Cleanup Complete ===\n\n", .{});
+        // Print summary of resource counts if enabled
+        if (self.debug_config.enabled and self.debug_config.show_cleanup_summary) {
+
+            std.debug.print("\n[RS]: === Resource Manager Summary ===\n", .{});
+            
+            if (self.debug_config.show_models) std.debug.print("[RS]: Models left in manager: {d}\n", .{total_models});
+            if (self.debug_config.show_meshes) std.debug.print("[RS]: Meshes left in manager: {d}\n", .{total_meshes});
+            if (self.debug_config.show_materials) std.debug.print("[RS]: Materials left in manager: {d}\n", .{total_materials});
+            if (self.debug_config.show_textures) std.debug.print("[RS]: Textures left in manager: {d}\n", .{total_textures});
+            if (self.debug_config.show_shaders) std.debug.print("[RS]: Shaders left in manager: {d}\n", .{total_shaders});
+            std.debug.print("[RS]: Total resources left in manager: {d}\n", .{total_models + total_meshes + total_materials + total_textures + total_shaders});
+
+            std.debug.print("[RS]: === Resource Manager Cleanup Complete ===\n\n", .{});
+        }
         
         self.allocator.destroy(self);
     }
@@ -243,21 +353,21 @@ pub const ResourceManager = struct {
 
     /// Print reference count information for a specific type of resource
     fn printRefCounts(self: *ResourceManager, res_type: ResourceType, refs: []ResourceRefInfo) void {
-        std.debug.print("\n--- {s} Reference Counts Before Cleanup ---\n", .{@tagName(res_type)});
+        std.debug.print("\n[RS] {s} Reference Counts Before Cleanup\n", .{@tagName(res_type)});
         
         if (refs.len == 0) {
-            std.debug.print("No {s} resources found.\n", .{@tagName(res_type)});
+            std.debug.print("[RS] No {s} resources found.\n", .{@tagName(res_type)});
             self.allocator.free(refs); // Free the empty array
             return;
         }
 
         var total_refs: u32 = 0;
         for (refs) |ref_info| {
-            std.debug.print("{s} - Refs: {d}\n", .{ref_info.name, ref_info.ref_count});
+            std.debug.print("[RS] {s} - Refs: {d}\n", .{ref_info.name, ref_info.ref_count});
             total_refs += ref_info.ref_count;
             self.allocator.free(ref_info.name); // Free the duplicated ID string
         }
-        std.debug.print("Total reference count for {s}: {d}\n", .{@tagName(res_type), total_refs});
+        std.debug.print("[RS] Total reference count for {s}: {d}\n", .{@tagName(res_type), total_refs});
 
         // Free the array after processing all items
         self.allocator.free(refs);
@@ -316,6 +426,7 @@ pub fn ResourceCollection(comptime T: type) type {
             
             // Add to the hash map
             try self.resources.put(owned_name, resource);
+
             return resource;
         }
 

@@ -26,8 +26,8 @@ pub const Mesh = struct {
 
     pub fn create(allocator: std.mem.Allocator, data: []const f32, indices: []const u32, package_size: u4) !*Mesh {
 
-        const layout: VertexLayout = undefined;
-        const floats_per_vertex: usize = 0;
+        var layout: VertexLayout = undefined;
+        var floats_per_vertex: usize = 0;
 
         // Determine layout and floats_per_vertex
        switch (package_size) {
@@ -123,7 +123,7 @@ pub const Mesh = struct {
             20, 21, 22, 22, 23, 20, // Left
         };
 
-        return Mesh.create(allocator, &vertices, &indices, false);
+        return Mesh.create(allocator, &vertices, &indices, 5);
     }
 
     /// Mesh creation helper function
@@ -136,7 +136,7 @@ pub const Mesh = struct {
         };
         const indices = [_]u32{ 0, 1, 2 };
 
-        return Mesh.create(allocator, &vertices, &indices, null);
+        return Mesh.create(allocator, &vertices, &indices, 3);
     }
 
     // ============================================================
