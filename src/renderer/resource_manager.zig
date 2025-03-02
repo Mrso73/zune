@@ -137,15 +137,15 @@ pub const ResourceManager = struct {
   
     
     /// Create a Mesh with the given parameters
-    pub fn createMesh(self: *ResourceManager, name: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
+    pub fn createMesh(self: *ResourceManager, name: []const u8, data: []const f32, indices: []const u32, package_size: u4) !*Mesh {
         if (self.debug_config.show_res_creation and self.debug_config.show_meshes){
             std.debug.print("[RS]: Creating Mesh: \"{s}\"\n", .{name});
         }
-        return try self.meshes.createResource(name, Mesh.create, .{data, indices, has_normals});
+        return try self.meshes.createResource(name, Mesh.create, .{data, indices, package_size});
     }
 
     /// Create a Mesh with a generated name
-    pub fn autoCreateMesh(self: *ResourceManager, prefix: []const u8, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
+    pub fn autoCreateMesh(self: *ResourceManager, prefix: []const u8, data: []const f32, indices: []const u32, package_size: u4) !*Mesh {
         const name = try self.meshes.generateUniqueName(prefix);
         defer self.meshes.allocator.free(name); // Free the generated unique name after duplicating in createResource.
 
@@ -153,7 +153,7 @@ pub const ResourceManager = struct {
             std.debug.print("[RS]: AutoGenerating Mesh: \"{s}\"\n", .{name});
         }
 
-        return try self.meshes.createResource(name, Mesh.create, .{data, indices, has_normals});
+        return try self.meshes.createResource(name, Mesh.create, .{data, indices, package_size});
     }
 
     pub fn createCubeMesh(self: *ResourceManager, name: []const u8) !*Mesh {
