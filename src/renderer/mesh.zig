@@ -4,6 +4,13 @@ const std = @import("std");
 const c = @import("../bindings/c.zig");
 const err = @import("../core/gl.zig");
 
+
+/// Error type for time operations
+pub const MeshError = error{
+    InvalidPackageSize,
+};
+
+
 pub const Mesh = struct {
     vao: c.GLuint,
     vbo: c.GLuint,
@@ -17,19 +24,31 @@ pub const Mesh = struct {
     // Public API: Creation Functions
     // ============================================================
 
-    pub fn create(allocator: std.mem.Allocator, data: []const f32, indices: []const u32, has_normals: bool) !*Mesh {
+    pub fn create(allocator: std.mem.Allocator, data: []const f32, indices: []const u32, package_size: u4) !*Mesh {
 
-        // Determine layout based on has_normals flag
-        const layout = if (has_normals)
-            VertexLayout.PosNormTex()
-        else
-            VertexLayout.PosTex();
+        const layout: VertexLayout = undefined;
+        const floats_per_vertex: usize = 0;
 
-        // Calculate expected floats per vertex
-        const floats_per_vertex = if (has_normals)
-            @as(usize, 8) // pos(3) + norm(3) + tex(2)
-        else
-            @as(usize, 5); // pos(3) + tex(2)
+        // Determine layout and floats_per_vertex
+       switch (package_size) {
+            3 => |size| { 
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.Pos();
+            },
+            5 => |size| { 
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosTex();
+            },
+            6 => |size| { 
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosNorm();
+            },
+            8 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosNormTex();
+            },
+            else => return MeshError.InvalidPackageSize,
+        }
 
         // Validate input data length
         if (data.len % floats_per_vertex != 0) return error.InvalidVertexData;
