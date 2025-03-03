@@ -15,11 +15,24 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .target = target,
     });
+    
+    // Add include paths for all C libraries
     libzune.addIncludePath(b.path("dependencies/include/"));
     
     libzune.addObjectFile(b.path("dependencies/lib/libglfw3.a"));
     libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/glad.c") });
     libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/stb_image.c") });
+
+    // Compile cglm as a static library (TODO: change to object file)
+    const cglm_sources = [_][]const u8{
+        "dependencies/lib/cglm.c",
+    };
+    
+    for (cglm_sources) |src| {
+        libzune.addCSourceFile(.{
+            .file = b.path(src),
+        });
+    }
 
     // Define the examples
     const examples = .{
