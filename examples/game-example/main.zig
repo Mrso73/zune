@@ -25,22 +25,12 @@ pub fn main() !void {
     });
     defer window.release();
 
-    const window_size = window.getSize();
-
     window.centerWindow();
     window.setCursorMode(.disabled);
 
 
     // create a Renderer
-    var renderer = try zune.graphics.Renderer.create(allocator, .{
-        .clear_color = .{ 0.1, 0.1, 0.1, 1.0 },
-        .initial_viewport = .{
-            .x = 0,
-            .y = 0,
-            .width = @intCast(window_size.width),
-            .height = @intCast(window_size.height)
-        }
-    });
+    var renderer = try zune.graphics.Renderer.create(allocator, .{});
     defer renderer.release();
 
 

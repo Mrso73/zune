@@ -30,16 +30,16 @@ re-write the framework in the Zig programming language because i have taken a li
 ## Roadmap
 
 ### Core Functionality
-- [x] Basic input system
+- [x] Input system
 - [x] Simple resource manager
-- [ ] Enhanced input handling
+- [ ] Key-mapping functionality
 - [ ] Collision detection system
 
 
 ### Rendering
-- [x] Model, mesh, material, texture, and shader system
-- [x] Camera system
+- [x] Rendering System (Models, meshs, Materials, Textures, and Shaders)
 - [x] Primitive shape rendering
+- [x] Camera system
 - [ ] Lighting system
 
 

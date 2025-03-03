@@ -45,15 +45,15 @@ pub fn main() !void {
 
 
     // create a Resource Manager
-    var resource_manager = try zune.graphics.ResourceManager.create(allocator);
+    var resource_manager = try zune.graphics.ResourceManager.create(allocator, .{.enabled = true});
     defer resource_manager.releaseAll() catch {};
 
 
     //setup time utitilites
-    var time = zune.core.Time.init(.{
-        .target_fps = 120,
-        .fixed_timestep = 1.0 / 60.0,
-    });
+    //var time = zune.core.Time.init(.{
+    //    .target_fps = 120,
+    //    .fixed_timestep = 1.0 / 60.0,
+    //});
 
 
 
@@ -87,13 +87,13 @@ pub fn main() !void {
 
         // ==== Update Variables ==== //
         // Get delta time
-        time.update();
-        const dt = time.getDelta();
+        //try time.update();
+        //const dt = time.getDelta();
 
 
         // ==== Process Input ==== //    
         const mouse_pos = window.input.?.getMousePosition();   
-        camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), dt);
+        camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), 1 / 60);
 
         // Check input states
         if (window.input.?.isKeyPressed(.KEY_ESCAPE)) {
@@ -103,11 +103,11 @@ pub fn main() !void {
 
         // ==== Update Program ==== //
         // Fixed updates (at fixed timestep intervals)
-        while (time.shouldFixedUpdate()) {
-            const fixed_dt = time.getFixedTimestep();
-            _ = fixed_dt;
+        //while (time.shouldFixedUpdate()) {
+        //    const fixed_dt = time.getFixedTimestep();
+        //    _ = fixed_dt;
             // Update physics with fixed_dt...
-        }
+        //}
 
         main_cube_transform.rotate(i, i / 2, 0.0);
 
