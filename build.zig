@@ -18,21 +18,18 @@ pub fn build(b: *std.Build) void {
     
     // Add include paths for all C libraries
     libzune.addIncludePath(b.path("dependencies/include/"));
-    
+
+    // Add object files and C source files
     libzune.addObjectFile(b.path("dependencies/lib/libglfw3.a"));
     libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/glad.c") });
     libzune.addCSourceFile(.{ .file = b.path("dependencies/lib/stb_image.c") });
-
-    // Compile cglm as a static library (TODO: change to object file)
-    const cglm_sources = [_][]const u8{
-        "dependencies/lib/cglm.c",
-    };
-    
-    for (cglm_sources) |src| {
-        libzune.addCSourceFile(.{
-            .file = b.path(src),
-        });
-    }
+    libzune.addCSourceFile(.{ 
+        .file = b.path("dependencies/lib/eigen_wrapper.cpp"),
+        .flags = &[_][]const u8{
+            "-std=c++17",  // Use C++17 or higher
+            "-fno-exceptions", // Optional: disable exceptions if not needed
+        }, 
+    });
 
     // Define the examples
     const examples = .{
@@ -60,6 +57,7 @@ pub fn build(b: *std.Build) void {
         exe.linkSystemLibrary("user32");
         exe.linkSystemLibrary("kernel32");
         exe.linkSystemLibrary("opengl32");
+        exe.linkSystemLibrary("stdc++");
 
         // Create install step
         const install_step = b.addInstallArtifact(exe, .{});
