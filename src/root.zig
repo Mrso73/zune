@@ -1,7 +1,7 @@
 // root.zig - Main framework entry point
+
 const std = @import("std");
 pub const c = @import("bindings/c.zig");
-
 
 
 /// Core engine functionality for window management, input, and timing
@@ -46,16 +46,10 @@ pub const ecs = struct {
 
 // Math utilities
 pub const math = struct {
-    pub usingnamespace @import("math/common.zig");
-
     pub usingnamespace @import("math/vector.zig");
     pub usingnamespace @import("math/matrix.zig");
 
-    pub const constants = struct {
-        pub const PI: f32 = 3.14159265359;
-        pub const TAU: f32 = PI * 2.0;
-        pub const EPSILON: f32 = 1e-6;
-    };
+    pub usingnamespace @import("math/misc.zig");
 };
 
 

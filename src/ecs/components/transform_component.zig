@@ -1,57 +1,55 @@
 const std = @import("std");
 
-pub const TransformComponent = struct {
-    position: [3]f32 = .{0, 0, 0},
-    rotation: [3]f32 = .{0, 0, 0},
-    scale: [3]f32 = .{1, 1, 1},
-    local_matrix: [16]f32 = undefined,
-    world_matrix: [16]f32 = undefined,
+const Vec3f = @import("../../math/vector.zig").Vec3f;
+const Mat4f = @import("../../math/matrix.zig").Mat4f;
 
-    /// Create identity transform
+
+pub const TransformComponent = struct {
+    position: Vec3f = Vec3f.create(0, 0, 0),
+    rotation: Vec3f = Vec3f.create(0, 0, 0),
+    scale: Vec3f = Vec3f.create(1, 1, 1),
+    local_matrix: Mat4f = undefined,
+    world_matrix: Mat4f = undefined,
+
     pub fn identity() TransformComponent {
         return TransformComponent{};
     }
     
     /// Convert transform components to 4x4 matrix
-    pub fn toMatrix(self: TransformComponent) [16]f32 {
+    pub fn toMatrix(self: TransformComponent) Mat4f {
         // Create result matrix (column-major as OpenGL expects)
-        var result: [16]f32 = .{
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1,
-        };
+        var result = Mat4f.identity();
 
         // Pre-calculate trigonometric values
-        const cx = @cos(self.rotation[0]);
-        const sx = @sin(self.rotation[0]);
-        const cy = @cos(self.rotation[1]);
-        const sy = @sin(self.rotation[1]);
-        const cz = @cos(self.rotation[2]);
-        const sz = @sin(self.rotation[2]);
+        const cx = @cos(self.rotation.x);
+        const sx = @sin(self.rotation.x);
+        const cy = @cos(self.rotation.y);
+        const sy = @sin(self.rotation.y);
+        const cz = @cos(self.rotation.z);
+        const sz = @sin(self.rotation.z);
 
         // Rotation matrix components
         // Combine X, Y, Z rotations (order: Y * X * Z)
-        result[0] = cy * cz * self.scale[0];
-        result[1] = (sx * sy * cz + cx * sz) * self.scale[0];
-        result[2] = (-cx * sy * cz + sx * sz) * self.scale[0];
-        result[3] = 0;
+        result.data[0] = cy * cz * self.scale.x;
+        result.data[1] = (sx * sy * cz + cx * sz) * self.scale.x;
+        result.data[2] = (-cx * sy * cz + sx * sz) * self.scale.x;
+        result.data[3] = 0;
 
-        result[4] = -cy * sz * self.scale[1];
-        result[5] = (-sx * sy * sz + cx * cz) * self.scale[1];
-        result[6] = (cx * sy * sz + sx * cz) * self.scale[1];
-        result[7] = 0;
+        result.data[4] = -cy * sz * self.scale.y;
+        result.data[5] = (-sx * sy * sz + cx * cz) * self.scale.y;
+        result.data[6] = (cx * sy * sz + sx * cz) * self.scale.y;
+        result.data[7] = 0;
 
-        result[8] = sy * self.scale[2];
-        result[9] = -sx * cy * self.scale[2];
-        result[10] = cx * cy * self.scale[2];
-        result[11] = 0;
+        result.data[8] = sy * self.scale.z;
+        result.data[9] = -sx * cy * self.scale.z;
+        result.data[10] = cx * cy * self.scale.z;
+        result.data[11] = 0;
 
         // Translation
-        result[12] = self.position[0];
-        result[13] = self.position[1];
-        result[14] = self.position[2];
-        result[15] = 1;
+        result.data[12] = self.position.x;
+        result.data[13] = self.position.y;
+        result.data[14] = self.position.z;
+        result.data[15] = 1;
 
         return result;
     }
@@ -68,39 +66,39 @@ pub const TransformComponent = struct {
 
     /// Rotate the model by given angles (in radians)
     pub fn rotate(self: *TransformComponent, x: f32, y: f32, z: f32) void {
-        self.rotation[0] += x;
-        self.rotation[1] += y;
-        self.rotation[2] += z;
+        self.rotation.x += x;
+        self.rotation.y += y;
+        self.rotation.z += z;
         self.updateMatrices();
     }
 
 
     /// Scale the model relative to its current scale
     pub fn relScale(self: *TransformComponent, x: f32, y: f32, z: f32) void {
-        self.scale[0] *= x;
-        self.scale[1] *= y;
-        self.scale[2] *= z;
+        self.scale.x *= x;
+        self.scale.y *= y;
+        self.scale.z *= z;
         self.updateMatrices();
     }
 
 
     /// Set absolute position
     pub fn setPosition(self: *TransformComponent, x: f32, y: f32, z: f32) void {
-        self.position = .{x, y, z};
+        self.position = .{ .x = x, .y = y, .z = z };
         self.updateMatrices();
     }
 
 
     /// Set absolute rotation (angles in radians)
     pub fn setRotation(self: *TransformComponent, x: f32, y: f32, z: f32) void {
-        self.rotation = .{x, y, z};
+        self.rotation = .{ .x = x, .y = y, .z = z };
         self.updateMatrices();
     }
 
 
     /// Set absolute scale
     pub fn setScale(self: *TransformComponent, x: f32, y: f32, z: f32) void {
-        self.scale = .{x, y, z};
+        self.scale = .{ .x = x, .y = y, .z = z };
         self.updateMatrices();
     }
 

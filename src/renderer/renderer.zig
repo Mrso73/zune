@@ -7,7 +7,7 @@ const Model = @import("model.zig").Model;
 const Mesh = @import("mesh.zig").Mesh;
 const Material = @import("material.zig").Material;
 
-const Mat4 = @import("../math/matrix.zig").Mat4;
+const Mat4f = @import("../math/matrix.zig").Mat4f;
 
 
 /// Configuration struct for renderer initialization
@@ -149,19 +149,22 @@ pub const Renderer = struct {
 
 
     // Updated draw function to accept Mesh
-    pub fn drawMesh(self: *Renderer, mesh: *Mesh, material: *Material, model_matrix: *const [16]f32, view_matrix: *const [16]f32, projection_matrix: *const [16]f32) !void {
+    pub fn drawMesh(self: *Renderer, mesh: *Mesh, material: *Material, model_matrix: *Mat4f, view_matrix: *Mat4f, projection_matrix: *Mat4f) !void {
         _ = self;
 
         try material.use();
 
         if (material.shader.uniform_cache.contains("model")) {
-            try material.shader.setUniformMat4("model", model_matrix);
+            const model_matrix_cnst = &model_matrix.data;
+            try material.shader.setUniformMat4("model", model_matrix_cnst);
         }
         if (material.shader.uniform_cache.contains("view")) {
-            try material.shader.setUniformMat4("view", view_matrix);
+            const view_matrix_cnst = &view_matrix.data;
+            try material.shader.setUniformMat4("view", view_matrix_cnst);
         }
         if (material.shader.uniform_cache.contains("projection")) {
-            try material.shader.setUniformMat4("projection", projection_matrix);
+            const projection_matrix_cnst = &projection_matrix.data;
+            try material.shader.setUniformMat4("projection", projection_matrix_cnst);
         }
 
         mesh.bind(); // Bind Mesh
@@ -175,7 +178,7 @@ pub const Renderer = struct {
     }
 
 
-    pub fn drawModel(self: *Renderer, model: *Model, model_matrix: *const [16]f32, view_matrix: *const [16]f32, projection_matrix: *const [16]f32) !void {
+    pub fn drawModel(self: *Renderer, model: *Model, model_matrix: *Mat4f, view_matrix: *Mat4f, projection_matrix: *Mat4f) !void {
 
         // Iterate over each mesh-material pair
         for (model.pairs.items) |pair| {

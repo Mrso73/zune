@@ -7,22 +7,22 @@ const Model = @import("model.zig").Model;
 const Mesh = @import("mesh.zig").Mesh;
 const Material = @import("material.zig").Material;
 
-const math = @import("../math/common.zig");
-const Vec3 = @import("../math/vector.zig").Vec3;
-const Mat4 = @import("../math/matrix.zig").Mat4;
+const Vec2f = @import("../math/vector.zig").Vec2f;
+const Vec3f = @import("../math/vector.zig").Vec3f;
+const Mat4f = @import("../math/matrix.zig").Mat4f;
 
 /// Camera implementation supporting both perspective and orthographic projections.
 /// Handles view and projection matrix calculations for 3D rendering.
 pub const Camera = struct {
     active_renderer: *Renderer,
 
-    position: Vec3(f32) = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
-    target: Vec3(f32) = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
-    up: Vec3(f32) = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
-    forward: Vec3(f32) = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
+    position: Vec3f = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
+    target: Vec3f = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
+    up: Vec3f = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
+    forward: Vec3f = .{ .x = 0.0, .y = 0.0, .z = -1.0 },
 
-    view_matrix: Mat4 = Mat4.identity(),
-    projection_matrix: Mat4 = Mat4.identity(),
+    view_matrix: Mat4f,
+    projection_matrix: Mat4f,
 
     near: f32,
     far: f32,
@@ -49,6 +49,8 @@ pub const Camera = struct {
     pub fn initPerspective(renderer_ptr: *Renderer, fov: f32, aspect: f32, near: f32, far: f32) Camera {
         var camera = Camera{
             .active_renderer = renderer_ptr,
+            .view_matrix = Mat4f.identity(),
+            .projection_matrix = Mat4f.identity(),
             .near = near,
             .far = far,
             .camera_type = .{
@@ -90,13 +92,13 @@ pub const Camera = struct {
     // ============================================================
     
     /// Draw a model from the camera perspective
-    pub fn drawModel(self: Camera, model: *Model, model_matrix: *const [16]f32) !void {
-        try self.active_renderer.drawModel(model, model_matrix, &self.view_matrix.data, &self.projection_matrix.data);
+    pub fn drawModel(self: *Camera, model: *Model, model_matrix: *Mat4f) !void {
+        try self.active_renderer.drawModel(model, model_matrix, &self.view_matrix, &self.projection_matrix);
     }
 
 
-    pub fn drawMesh(self: Camera, mesh: Mesh, material: Material, model_matrix: *const [16]f32) !void {
-        try self.active_renderer.drawMesh(mesh, material, model_matrix, self.view_matrix.data, self.projection_matrix.data);
+    pub fn drawMesh(self: *Camera, mesh: *Mesh, material: *Material, model_matrix: *Mat4f) !void {
+        try self.active_renderer.drawMesh(mesh, material, model_matrix, &self.view_matrix, &self.projection_matrix);
     }
 
 
@@ -105,7 +107,7 @@ pub const Camera = struct {
 
         switch (self.camera_type) {
             .perspective => |*persp| {
-                self.projection_matrix = Mat4.perspective(
+                self.projection_matrix = Mat4f.perspective(
                     persp.fov,
                     persp.aspect,
                     self.near,
@@ -113,7 +115,7 @@ pub const Camera = struct {
                 );
             },
             .orthographic => |*ortho| {
-                self.projection_matrix = Mat4.ortho(
+                self.projection_matrix = Mat4f.ortho(
                     ortho.left,
                     ortho.right,
                     ortho.bottom,
@@ -126,7 +128,7 @@ pub const Camera = struct {
     }
 
 
-    pub fn worldToScreen(self: Camera, point: Vec3(f32)) math.Vec2(f32) {
+    pub fn worldToScreen(self: Camera, point: Vec3f) Vec2f {
         const M = self.getViewProjectionMatrix().data;
         const v = point;
 
@@ -144,27 +146,27 @@ pub const Camera = struct {
 
 
     /// Return wether point
-    pub fn inView(self: Camera, point: Vec3(f32)) bool {
+    pub fn inView(self: Camera, point: Vec3f) bool {
         _ = self;
         const pos = worldToScreen(point);
         return (@abs(pos.x) <= 1 and @abs(pos.y) < 1);
     } 
 
     /// Get the forward direction vector
-    pub fn getForwardVector(self: *const Camera) Vec3(f32) {
+    pub fn getForwardVector(self: *const Camera) Vec3f {
         return self.forward;
     }
 
 
     /// Set the camera position and update the view matrix
-    pub fn setPosition(self: *Camera, position: Vec3(f32)) void {
+    pub fn setPosition(self: *Camera, position: Vec3f) void {
         self.position = position;
         self.updateViewMatrix();
     }
 
 
     /// Set the camera target and update the view matrix
-    pub fn lookAt(self: *Camera, target: Vec3(f32)) void {
+    pub fn lookAt(self: *Camera, target: Vec3f) void {
         self.target = target;
         self.updateViewMatrix();
     }
@@ -173,10 +175,11 @@ pub const Camera = struct {
     /// Update the view matrix based on the current position, target, and up vector.
     pub fn updateViewMatrix(self: *Camera) void {
         // Calculate forward vector
-        self.forward = self.target.subtract(self.position).normalize();
+        //self.forward = self.target.subtract(self.position).normalize();
+        self.forward = Vec3f.normalize(Vec3f.subtract(self.target, self.position));
         
         // Create the view matrix
-        self.view_matrix = Mat4.lookAt(
+        self.view_matrix = Mat4f.lookAt(
             self.position,
             self.target,
             self.up,
@@ -185,7 +188,7 @@ pub const Camera = struct {
 
 
     /// Get the combined view-projection matrix
-    pub fn getViewProjectionMatrix(self: *Camera) Mat4 {
+    pub fn getViewProjectionMatrix(self: *Camera) Mat4f {
         return self.projection_matrix.multiply(self.view_matrix);
     }
 
@@ -299,7 +302,7 @@ pub const CameraMouseController = struct {
         const rad_yaw = std.math.degreesToRadians(self.yaw);
         const rad_pitch = std.math.degreesToRadians(self.pitch);
 
-        var direction: Vec3(f32) = .{
+        var direction: Vec3f = .{
             .x = @cos(rad_yaw) * @cos(rad_pitch),
             .y = @sin(rad_pitch),
             .z = @sin(rad_yaw) * @cos(rad_pitch),

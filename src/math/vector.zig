@@ -1,346 +1,296 @@
-const std = @import("std");
+// math/vector.zig - vector functionalities
+
+const eigen = @cImport({
+    @cInclude("Eigen/eigen_wrapper.h");
+});
+
+const math = @import("std").math;
+const eigen_interface = @import("eigen.zig");
+
+const Mat4f = @import("matrix.zig").Mat4f;
+const misc = @import("misc.zig");
+
+// ============================================================
+// Public API: Vec2 Implementations
+// ============================================================
+
+pub const Vec2f = struct {
+    x: f32,
+    y: f32,
+
+    // Pure Zig implementations
+
+    /// Create a Vec2f
+    pub fn create(x: f32, y: f32) Vec2f {
+        return Vec2f{ .x = x, .y = y };
+    }
+
+    /// Invert the Vec2f
+    pub fn inv(v: Vec2f) Vec2f {
+        return Vec2f{ .x = -v.x, .y = -v.y };
+    }
+
+    // Add two Vec2f's 
+    pub fn add(a: Vec2f, b: Vec2f) Vec2f {
+        return Vec2f{ .x = a.x + b.x, .y = a.y + b.y };
+    }
+
+    pub fn subtract(a: Vec2f, b: Vec2f) Vec2f {
+        return Vec2f{ .x = a.x - b.x, .y = a.y - b.y };
+    }
+
+    pub fn scale(v: Vec2f, scalar: f32) Vec2f {
+        return Vec2f{ .x = v.x * scalar, .y = v.y * scalar };
+    }
+
+    pub fn dot(a: Vec2f, b: Vec2f) f32 {
+        return a.x * b.x + a.y * b.y;
+    }
+
+    /// Clamp Vec2f between min and max
+    pub fn clamp(v: Vec2f, min: Vec2f, max: Vec2f) Vec2f {
+        return Vec2f{
+            .x = misc.clampf(v.x, min.x, max.x),
+            .y = misc.clampf(v.y, min.y, max.y),
+        };
+    }
+
+    // Lerp Vec2f between a and b using t
+    pub fn lerp(a: Vec2f, b: Vec2f, t: f32) Vec2f {
+        return Vec2f{
+            .x = misc.lerpf(a.x, b.x, t),
+            .y = misc.lerpf(a.y, b.y, t),
+        };
+    }
+    
 
 
-const VecError = error{InvalidType};
 
-/// Vector with 2 components
-pub fn Vec2(T: type) type {
-    return struct {
-        x: T = 0,
-        y: T = 0,
+    // Eigen based functions - they benefit from its optimizations
+    pub inline fn normalize(v: Vec2f) Vec2f {
+        const eigen_v = eigen_interface.toEigenVec2f(v);
+        const result = eigen.vec2fNormalize(eigen_v);
+        return eigen_interface.fromEigenVec2f(result);
+    }
 
-        const Self = @This();
+    pub inline fn length(v: Vec2f) f32 {
+        const eigen_v = eigen_interface.toEigenVec2f(v);
+        return eigen.vec2fLength(eigen_v);
+    }
 
+    pub inline fn lengthSquared(v: Vec2f) f32 {
+        const eigen_v = eigen_interface.toEigenVec2f(v);
+        return eigen.vec2fLengthSquared(eigen_v);
+    }
+    
+    pub inline fn distance(a: Vec2f, b: Vec2f) f32 {
+        const eigen_a = eigen_interface.toEigenVec2f(a);
+        const eigen_b = eigen_interface.toEigenVec2f(b);
+        return eigen.vec2fDistance(eigen_a, eigen_b);
+    }
 
-        // ============================================================
-        // Public API: Creation Functions
-        // ============================================================
-
-
-        // ============================================================
-        // Public API: Operational Functions
-        // ============================================================
-
-        pub fn add(self: Self, other: Self) Self {
-            return .{
-                .x = self.x + other.x,
-                .y = self.y + other.y,
-            };
-        }
-
-        pub fn subtract(self: Self, other: Self) Self {
-            return .{
-                .x = self.x - other.x,
-                .y = self.y - other.y,
-            };
-        }
-
-        pub fn inv(self: Self) Self {
-            return .{
-                .x = -self.x,
-                .y = -self.y,
-            };
-        }
-
-        pub fn length(self: Self) f32 {
-            const val: f32 = switch (@typeInfo(T)) {
-                .int =>             @as(f32, @floatFromInt(self.lengthSquared())),
-                .comptime_int =>    @as(f32, @floatFromInt(self.lengthSquared())),
-                .float =>           self.lengthSquared(),
-                .comptime_float =>  self.lengthSquared(),
-                else => return VecError.InvalidType,
-            };
-            return @sqrt(val);
-        }
-
-        pub fn lengthSquared(self: Self) T {
-            return self.x * self.x + self.y * self.y;
-        }
-    };
-}
+    
+};
 
 
 
-/// Vector with 3 components
-pub fn Vec3(T: type) type {
-    return struct {
-        x: T = 0,
-        y: T = 0,
-        z: T = 0,
 
-        const Self = @This();
+// ============================================================
+// Public API: Vec3 Implementations
+// ============================================================
 
+pub const Vec3f = struct {
+    x: f32,
+    y: f32,
+    z: f32,
 
-        // ============================================================
-        // Public API: Creation Functions
-        // ============================================================
+    // Pure Zig implementations
+    pub fn create(x: f32, y: f32, z: f32) Vec3f {
+        return Vec3f{ .x = x, .y = y, .z = z };
+    }
 
+    pub fn inv(v: Vec3f) Vec3f {
+        return Vec3f{ .x = -v.x, .y = -v.y, .z = -v.z };
+    }
 
-        // ============================================================
-        // Public API: Operational Functions
-        // ============================================================
+    pub fn clamp(v: Vec3f, min: Vec3f, max: Vec3f) Vec3f {
+        return .{
+            .x = misc.clampf(v.x, min.x, max.x),
+            .y = misc.clampf(v.y, min.y, max.y),
+            .z = misc.clampf(v.z, min.z, max.z),
+        };
+    }
 
-        pub fn add(self: Self, other: Self) Self {
-            return .{
-                .x = self.x + other.x,
-                .y = self.y + other.y,
-                .z = self.z + other.z,
-            };
-        }
-
-        pub fn subtract(self: Self, other: Self) Self {
-            return .{
-                .x = self.x - other.x,
-                .y = self.y - other.y,
-                .z = self.z - other.z,
-            };
-        }
-
-        pub fn normalize(self: Self) Vec3(f32) {
-            const len = self.length();
-            return switch (@typeInfo(T)) {
-                .int => .{
-                    .x = @as(f32, @floatFromInt(self.x))/len,
-                    .y = @as(f32, @floatFromInt(self.y))/len,
-                    .z = @as(f32, @floatFromInt(self.z))/len,
-                    },
-                .comptime_int =>    .{
-                    .x = @as(f32, @floatFromInt(self.x))/len,
-                    .y = @as(f32, @floatFromInt(self.y))/len,
-                    .z = @as(f32, @floatFromInt(self.z))/len,
-                    },
-                .float =>   .{
-                    .x = self.x/len,
-                    .y = self.y/len,
-                    .z = self.z/len,
-                    },
-                .comptime_float =>  .{
-                    .x = self.x/len,
-                    .y = self.y/len,
-                    .z = self.z/len,
-                    },
-                else => return VecError.InvalidType,
-            };
-        }
-
-        pub fn inv(self: Self) Self {
-            return switch (@typeInfo(T)) {
-                .int => | int |             switch (int.signedness == @TypeOf(int.signedness).signed) {
-                        true => .{
-                            .x = -self.x,
-                            .y = -self.y,
-                            .z = -self.z,
-                        },
-                        false => return VecError.InvalidType,
-                },
-                // .comptime_int => Has no `Int` property to check signedness
-                .float =>           .{.x = -self.x, .y = -self.y, .z = -self.z},
-                .comptime_float =>  .{.x = -self.x, .y = -self.y, .z = -self.z},
-                else => return VecError.InvalidType,
-            };
-        }
-
-        /// For unsigned integer vectors might return error for negative values of cross product
-        pub fn cross(self: Self, other: Self) Self {
-            return .{
-                .x = self.y * other.z - self.z * other.y,
-                .y = self.z * other.x - self.x * other.z,
-                .z = self.x * other.y - self.y * other.x,
-            };
-        }
-
-        pub fn dot(self: Self, other: Self) T {
-            return self.x * other.x + self.y * other.y + self.z * other.z;
-        }
-
-        pub fn length(self: Self) f32 {
-            const val: f32 = switch (@typeInfo(T)) {
-                .int =>             @as(f32, @floatFromInt(self.lengthSquared())),
-                .comptime_int =>    @as(f32, @floatFromInt(self.lengthSquared())),
-                .float =>           self.lengthSquared(),
-                .comptime_float =>  self.lengthSquared(),
-                else => return VecError.InvalidType,
-            };
-            return @sqrt(val);
-        }
-
-        pub fn lengthSquared(self: Self) T {
-            return self.x * self.x + self.y * self.y + self.z * self.z;
-        }
-
-        // Add this new function
-        pub fn scale(self: Self, scalar: f32) Vec3(f32) {
-            return switch(@typeInfo(T)) {
-                .int =>             .{
-                    .x = @as(f32, @floatFromInt(self.x))*scalar,
-                    .y = @as(f32, @floatFromInt(self.y))*scalar,
-                    .z = @as(f32, @floatFromInt(self.z))*scalar,
-                },
-                .comptime_int =>    .{
-                    .x = @as(f32, @floatFromInt(self.x))*scalar,
-                    .y = @as(f32, @floatFromInt(self.y))*scalar,
-                    .z = @as(f32, @floatFromInt(self.z))*scalar,
-                },
-                .float =>           .{
-                    .x = self.x*scalar,
-                    .y = self.y*scalar,
-                    .z = self.z*scalar,
-                },
-                .comptime_float =>  .{
-                    .x = self.x*scalar,
-                    .y = self.y*scalar,
-                    .z = self.z*scalar,
-                },
-                else => return VecError.InvalidType,
-            };
-        }
-    };
-}
-
-/// Vector with 4 components
-pub fn Vec4(T: type) type {
-    return struct {
-        x: T = 0,
-        y: T = 0,
-        z: T = 0,
-        w: T = 0,
-
-        const Self = @This();
+    pub fn lerp(a: Vec3f, b: Vec3f, t: f32) Vec3f {
+        return .{
+            .x = misc.lerpf(a.x, b.x, t),
+            .y = misc.lerpf(a.y, b.y, t),
+            .z = misc.lerpf(a.z, b.z, t),
+        };
+    }
 
 
-        // ============================================================
-        // Public API: Creation Functions
-        // ============================================================
-
-        /// Create a Vec4 from a Vec3 and a w component
-        pub fn fromVec3(v3: Vec3(T), w: T) Self {
-            return .{ .x = v3.x, .y = v3.y, .z = v3.z, .w = w };
-        }
 
 
-        // ============================================================
-        // Public API: Operational Functions
-        // ============================================================
+    // Eigen based functions - they benefit from its optimizations
+    pub inline fn add(a: Vec3f, b: Vec3f) Vec3f {
+        const eigen_a = eigen_interface.toEigenVec3f(a);
+        const eigen_b = eigen_interface.toEigenVec3f(b);
+        const result = eigen.vec3fAdd(eigen_a, eigen_b);
+        return eigen_interface.fromEigenVec3f(result);
+    }
 
-        pub fn add(self: Self, other: Self) Self {
-            return .{
-                .x = self.x + other.x,
-                .y = self.y + other.y,
-                .z = self.z + other.z,
-                .w = self.w + other.w,
-            };
-        }
+    pub inline fn subtract(a: Vec3f, b: Vec3f) Vec3f {
+        const eigen_a = eigen_interface.toEigenVec3f(a);
+        const eigen_b = eigen_interface.toEigenVec3f(b);
+        const result = eigen.vec3fSubtract(eigen_a, eigen_b);
+        return eigen_interface.fromEigenVec3f(result);
+    }
+    
+    pub inline fn scale(v: Vec3f, scalar: f32) Vec3f {
+        const eigen_v = eigen_interface.toEigenVec3f(v);
+        const result = eigen.vec3fScale(eigen_v, scalar);
+        return eigen_interface.fromEigenVec3f(result);
+    }
 
-        pub fn subtract(self: Self, other: Self) Self {
-            return .{
-                .x = self.x - other.x,
-                .y = self.y - other.y,
-                .z = self.z - other.z,
-                .w = self.w - other.w,
-            };
-        }
+    pub inline fn cross(a: Vec3f, b: Vec3f) Vec3f {
+        const eigen_a = eigen_interface.toEigenVec3f(a);
+        const eigen_b = eigen_interface.toEigenVec3f(b);
+        const result = eigen.vec3fCross(eigen_a, eigen_b);
+        return eigen_interface.fromEigenVec3f(result);
+    }
 
-        pub fn normalize(self: Self) Vec4(f32) {
-            const len = self.length();
-            return switch (@typeInfo(T)) {
-                .int => .{
-                    .x = @as(f32, @floatFromInt(self.x))/len,
-                    .y = @as(f32, @floatFromInt(self.y))/len,
-                    .z = @as(f32, @floatFromInt(self.z))/len,
-                    .w = @as(f32, @floatFromInt(self.w))/len,
-                    },
-                .comptime_int =>    .{
-                    .x = @as(f32, @floatFromInt(self.x))/len,
-                    .y = @as(f32, @floatFromInt(self.y))/len,
-                    .z = @as(f32, @floatFromInt(self.z))/len,
-                    .w = @as(f32, @floatFromInt(self.w))/len,
-                    },
-                .float =>   .{
-                    .x = self.x/len,
-                    .y = self.y/len,
-                    .z = self.z/len,
-                    .w = self.w/len,
-                    },
-                .comptime_float =>  .{
-                    .x = self.x/len,
-                    .y = self.y/len,
-                    .z = self.z/len,
-                    .w = self.w/len,
-                    },
-                else => return VecError.InvalidType,
-            };
-        }
+    pub inline fn normalize(v: Vec3f) Vec3f {
+        const eigen_v = eigen_interface.toEigenVec3f(v);
+        const result = eigen.vec3fNormalize(eigen_v);
+        return eigen_interface.fromEigenVec3f(result);
+    }
 
-        pub fn inv(self: Self) Self {
-            return switch (@typeInfo(T)) {
-                .int => | int |             switch (int.signedness == @TypeOf(int.signedness).signed) {
-                        true => .{
-                            .x = -self.x,
-                            .y = -self.y,
-                            .z = -self.z,
-                            .w = -self.w,
-                        },
-                        false => return VecError.InvalidType,
-                },
-                // .comptime_int => Has no `Int` property to check signedness
-                .float =>           .{.x = -self.x, .y = -self.y, .z = -self.z, .w = -self.w},
-                .comptime_float =>  .{.x = -self.x, .y = -self.y, .z = -self.z, .w = -self.w},
-                else => return VecError.InvalidType,
-            };
-        }
+    pub inline fn dot(a: Vec3f, b: Vec3f) f32 {
+        const eigen_a = eigen_interface.toEigenVec3f(a);
+        const eigen_b = eigen_interface.toEigenVec3f(b);
+        return eigen.vec3fDot(eigen_a, eigen_b);
+    }
 
-        pub fn dot(self: Self, other: Self) T {
-            return self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
-        }
+    pub inline fn length(v: Vec3f) f32 {
+        const eigen_v = eigen_interface.toEigenVec3f(v);
+        return eigen.vec3fLength(eigen_v);
+    }
 
-        pub fn length(self: Self) f32 {
-            const val: f32 = switch (@typeInfo(T)) {
-                .int =>             @as(f32, @floatFromInt(self.lengthSquared())),
-                .comptime_int =>    @as(f32, @floatFromInt(self.lengthSquared())),
-                .float =>           self.lengthSquared(),
-                .comptime_float =>  self.lengthSquared(),
-                else => return VecError.InvalidType,
-            };
-            return @sqrt(val);
-        }
+    pub inline fn lengthSquared(v: Vec3f) f32 {
+        const eigen_v = eigen_interface.toEigenVec3f(v);
+        return eigen.vec3fLengthSquared(eigen_v);
+    }
 
-        pub fn lengthSquared(self: Self) T {
-            return self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w;
-        }
+    pub inline fn distance(a: Vec3f, b: Vec3f) f32 {
+        const eigen_a = eigen_interface.toEigenVec3f(a);
+        const eigen_b = eigen_interface.toEigenVec3f(b);
+        const diff = eigen.vec3fSubtract(eigen_a, eigen_b);
+        return eigen.vec3fLength(diff);
+    }
 
-        pub fn scale(self: Self, scalar: f32) Vec4(f32) {
-            return switch(@typeInfo(T)) {
-                .int =>             .{
-                    .x = @as(f32, @floatFromInt(self.x))*scalar,
-                    .y = @as(f32, @floatFromInt(self.y))*scalar,
-                    .z = @as(f32, @floatFromInt(self.z))*scalar,
-                    .w = @as(f32, @floatFromInt(self.w))*scalar,
-                },
-                .comptime_int =>    .{
-                    .x = @as(f32, @floatFromInt(self.x))*scalar,
-                    .y = @as(f32, @floatFromInt(self.y))*scalar,
-                    .z = @as(f32, @floatFromInt(self.z))*scalar,
-                    .w = @as(f32, @floatFromInt(self.w))*scalar,
-                },
-                .float =>           .{
-                    .x = self.x*scalar,
-                    .y = self.y*scalar,
-                    .z = self.z*scalar,
-                    .w = self.w*scalar,
-                },
-                .comptime_float =>  .{
-                    .x = self.x*scalar,
-                    .y = self.y*scalar,
-                    .z = self.z*scalar,
-                    .w = self.w*scalar,
-                },
-                else => return VecError.InvalidType,
-            };
-        }
+    // Dependent on a lot of Eigen function
 
-        /// Get the Vec3 part of this Vec4
-        pub fn xyz(self: Self) Vec3(T) {
-            return Vec3(T){.x = self.x, .y = self.y, .z = self.z};
-        }
-    };
-}
+    /// Function to perform spherical linear interpolation between two 3D vectors
+    pub inline fn slerp(a: Vec3f, b: Vec3f, t: f32) Vec3f {
+        const eigen_a = eigen_interface.toEigenVec3f(a);
+        const eigen_b = eigen_interface.toEigenVec3f(b);
+        const result = eigen.vec3fSlerp(eigen_a, eigen_b, t);
+        return eigen_interface.fromEigenVec3f(result);
+    }
+};
+
+
+
+
+// ============================================================
+// Public API: Vec4 Implementations
+// ============================================================
+
+pub const Vec4f = struct {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+
+    // Pure Zig implementations
+    pub fn create(x: f32, y: f32, z: f32, w: f32) Vec4f {
+        return .{ .x = x, .y = y, .z = z, .w = w };
+    }
+
+    pub fn fromVec3(v: Vec3f, w: f32) Vec4f {
+        return .{ .x = v.x, .y = v.y, .z = v.z, .w = w };
+    }
+
+    pub fn inv(v: Vec4f) Vec4f {
+        return .{ .x = -v.x, .y = -v.y, .z = -v.z, .w = -v.w };
+    }
+
+    pub fn clamp(v: Vec4f, min: Vec4f, max: Vec4f) Vec4f {
+        return .{
+            .x = misc.clampf(v.x, min.x, max.x),
+            .y = misc.clampf(v.y, min.y, max.y),
+            .z = misc.clampf(v.z, min.z, max.z),
+            .w = misc.clampf(v.w, min.w, max.w),
+        };
+    }
+
+    pub fn lerp(a: Vec4f, b: Vec4f, t: f32) Vec4f {
+        return .{
+            .x = misc.lerpf(a.x, b.x, t),
+            .y = misc.lerpf(a.y, b.y, t),
+            .z = misc.lerpf(a.z, b.z, t),
+            .w = misc.lerpf(a.w, b.w, t),
+        };
+    }
+
+    pub fn xyz(v: Vec4f) Vec3f {
+        return .{ .x = v.x, .y = v.y, .z = v.z };
+    }
+
+
+
+
+    // Eigen based functions - they benefit from its optimizations
+    pub inline fn add(a: Vec4f, b: Vec4f) Vec4f {
+        const eigen_a = eigen_interface.toEigenVec4f(a);
+        const eigen_b = eigen_interface.toEigenVec4f(b);
+        const result = eigen.vec4fAdd(eigen_a, eigen_b);
+        return eigen_interface.fromEigenVec4f(result);
+    }
+
+    pub inline fn subtract(a: Vec4f, b: Vec4f) Vec4f {
+        const eigen_a = eigen_interface.toEigenVec4f(a);
+        const eigen_b = eigen_interface.toEigenVec4f(b);
+        const result = eigen.vec4fSubtract(eigen_a, eigen_b);
+        return eigen_interface.fromEigenVec4f(result);
+    }
+
+    pub inline fn scale(v: Vec4f, scalar: f32) Vec4f {
+        const eigen_v = eigen_interface.toEigenVec4f(v);
+        const result = eigen.vec4fScale(eigen_v, scalar);
+        return eigen_interface.fromEigenVec4f(result);
+    }
+
+    pub inline fn normalize(v: Vec4f) Vec4f {
+        const eigen_v = eigen_interface.toEigenVec4f(v);
+        const result = eigen.vec4fNormalize(eigen_v);
+        return eigen_interface.fromEigenVec4f(result);
+    }
+
+    pub inline fn dot(a: Vec4f, b: Vec4f) f32 {
+        const eigen_a = eigen_interface.toEigenVec4f(a);
+        const eigen_b = eigen_interface.toEigenVec4f(b);
+        return eigen.vec4fDot(eigen_a, eigen_b);
+    }
+
+    pub inline fn length(v: Vec4f) f32 {
+        const eigen_v = eigen_interface.toEigenVec4f(v);
+        return eigen.vec4fLength(eigen_v);
+    }
+
+    pub inline fn lengthSquared(v: Vec4f) f32 {
+        const eigen_v = eigen_interface.toEigenVec4f(v);
+        return eigen.vec4fLengthSquared(eigen_v);
+    }
+};

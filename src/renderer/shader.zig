@@ -3,6 +3,10 @@ const std = @import("std");
 const c = @import("../bindings/c.zig");
 const err = @import("../core/gl.zig");
 
+
+const Vec4f = @import("../math/vector.zig").Vec4f;
+const Mat4f = @import("../math/matrix.zig").Mat4f;
+
 // We need StringHashMap for uniform caching
 const StringHashMap = std.StringHashMap;
 
