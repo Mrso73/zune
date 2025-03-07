@@ -7,8 +7,8 @@ re-write the framework in the Zig programming language because i have taken a li
 
 ## Features
 
-- **3D-first architecture** – While 2D rendering is possible, all objects exist within a 3D world space.
-- **High-level design with low-level access** – Provides an intuitive API while allowing fine-grained control when needed.
+- **3D-first architecture** – While 2D rendering is possible, all objects exist within 3D world space.
+- **High-level API design** – Provides relatively high-level API with low-level control.
 - **Entity Component System (ECS)** – Modular and extensible entity management.
 - **Efficient resource management** – Optimized handling of textures, shaders, and models.
 
@@ -46,6 +46,22 @@ re-write the framework in the Zig programming language because i have taken a li
 ### Entity Component System (ECS)
 - [x] Initial ECS implementation
 - [ ] Improved query customization
+
+
+## Showcase
+
+![Polygon Heightmap](img/img1.png?raw=true "Polygon Heightmap")
+
+
+## Dependencies
+
+The zune Engine currently only uses C/C++ for third-party libraries, because C is a beautifull language and C++ has a very mature ecosystem.
+
+Currently used libraries are:
+- Eigen (C++ library for linear algebra)
+- glad (C library for talking to OpenGL)
+- glfw (C library for window creation and input devices)
+- stb_image (C library for reading of images)
 
 
 ## Contributing
