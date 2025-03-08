@@ -177,7 +177,7 @@ pub const ResourceManager = struct {
 
     /// Create a Material with the given parameters
     pub fn createMaterial(self: *ResourceManager, name: []const u8, shader: *Shader, color: [4]f32, texture: ?*Texture) !*Material {
-        if (self.debug_config.show_res_creation and self.debug_config.show_material){
+        if (self.debug_config.show_res_creation and self.debug_config.show_materials){
             std.debug.print("[RS]: Creating Material: \"{s}\"\n", .{name});
         }
 
