@@ -158,6 +158,200 @@ pub const Mesh = struct {
     }
 
     // ============================================================
+    // Public API: Mesh Modification
+    // ============================================================
+
+    /// Updates the vertex data of an existing mesh
+    /// This will replace all vertex data while keeping the same VAO and VBO
+    pub fn updateVertexData(self: *Mesh, data: []const f32, package_size: u4) !void {
+        // Validate package size
+        var layout: VertexLayout = undefined;
+        var floats_per_vertex: usize = 0;
+
+        // Determine layout and floats_per_vertex
+        switch (package_size) {
+            3 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.Pos();
+            },
+            5 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosTex();
+            },
+            6 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosNorm();
+            },
+            8 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosNormTex();
+            },
+            else => return MeshError.InvalidPackageSize,
+        }
+
+        // Validate input data length
+        if (data.len % floats_per_vertex != 0) return error.InvalidVertexData;
+
+        // Bind the VAO to ensure we're updating the correct buffer
+        c.glBindVertexArray(self.vao);
+        err.checkGLError("updateVertexData: bind VAO");
+
+        // Update vertex buffer
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
+        err.checkGLError("updateVertexData: bind VBO");
+        
+        c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len * @sizeOf(f32)), data.ptr, c.GL_STATIC_DRAW);
+        err.checkGLError("updateVertexData: glBufferData for vertices");
+
+        // Reset vertex attributes based on the possibly new layout
+        // First, disable all previous attributes
+        var attr_index: c.GLuint = 0;
+        while (attr_index < 8) : (attr_index += 1) { // 8 is a "ok" max for attributes?
+            c.glDisableVertexAttribArray(attr_index);
+        }
+
+        // Set up new vertex attributes based on layout
+        var offset: usize = 0;
+        for (layout.descriptors, 0..) |desc, index| {
+            const attr_size: c.GLint = switch (desc.attribute_type) {
+                .Position => 3,
+                .TexCoord => 2,
+                .Normal => 3,
+            };
+
+            c.glVertexAttribPointer(
+                @intCast(index),
+                attr_size,
+                desc.data_type,
+                c.GL_FALSE,
+                @intCast(layout.stride),
+                @ptrFromInt(offset),
+            );
+            err.checkGLError("updateMesh: glVertexAttribPointer");
+
+            c.glEnableVertexAttribArray(@intCast(index));
+            err.checkGLError("updateMesh: glEnableVertexAttribArray");
+
+            offset += @as(usize, @intCast(attr_size)) * @sizeOf(f32);
+        }
+
+        // Make sure EBO is still bound to VAO
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.ebo);
+        err.checkGLError("updateVertexData: rebind EBO");
+
+        c.glBindVertexArray(0); // Unbind VAO
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, 0); // Unbind VBO
+    }
+
+    /// Updates the index data of an existing mesh
+    pub fn updateIndexData(self: *Mesh, indices: []const u32) !void {
+        // Bind the VAO to ensure we're updating the correct buffer
+        c.glBindVertexArray(self.vao);
+        err.checkGLError("updateIndexData: bind VAO");
+
+        // Update element buffer
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.ebo);
+        err.checkGLError("updateIndexData: bind EBO");
+        
+        c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len * @sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
+        err.checkGLError("updateIndexData: glBufferData for indices");
+
+        // Update index count
+        self.index_count = indices.len;
+
+        c.glBindVertexArray(0); // Unbind VAO
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, 0); // Unbind EBO
+    }
+
+    /// Updates both vertex and index data of an existing mesh
+    pub fn updateMesh(self: *Mesh, data: []const f32, indices: []const u32, package_size: u4) !void {
+        // Single VAO bind/unbind for the entire operation
+        c.glBindVertexArray(self.vao);
+        err.checkGLError("updateMesh: bind VAO");
+        
+        // Update vertex buffer and attributes
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
+        err.checkGLError("updateMesh: bind VBO");
+        
+        c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(data.len * @sizeOf(f32)), data.ptr, c.GL_STATIC_DRAW);
+        err.checkGLError("updateMesh: glBufferData for vertices");
+
+        // Validate package size and set up the appropriate layout
+        var layout: VertexLayout = undefined;
+        var floats_per_vertex: usize = 0;
+
+        switch (package_size) {
+            3 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.Pos();
+            },
+            5 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosTex();
+            },
+            6 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosNorm();
+            },
+            8 => |size| {
+                floats_per_vertex = @as(usize, size);
+                layout = VertexLayout.PosNormTex();
+            },
+            else => return MeshError.InvalidPackageSize,
+        }
+
+        // Validate input data length
+        if (data.len % floats_per_vertex != 0) return error.InvalidVertexData;
+
+        // Reset and set up vertex attributes
+        var attr_index: c.GLuint = 0;
+        while (attr_index < 8) : (attr_index += 1) {
+            c.glDisableVertexAttribArray(attr_index);
+        }
+
+        var offset: usize = 0;
+        for (layout.descriptors, 0..) |desc, index| {
+            const attr_size: c.GLint = switch (desc.attribute_type) {
+                .Position => 3,
+                .TexCoord => 2,
+                .Normal => 3,
+            };
+
+            c.glVertexAttribPointer(
+                @intCast(index),
+                attr_size,
+                desc.data_type,
+                c.GL_FALSE,
+                @intCast(layout.stride),
+                @ptrFromInt(offset),
+            );
+            err.checkGLError("updateMesh: glVertexAttribPointer");
+
+            c.glEnableVertexAttribArray(@intCast(index));
+            err.checkGLError("updateMesh: glEnableVertexAttribArray");
+
+            offset += @as(usize, @intCast(attr_size)) * @sizeOf(f32);
+        }
+
+        // Update index buffer
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.ebo);
+        err.checkGLError("updateMesh: bind EBO");
+        
+        c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len * @sizeOf(u32)), indices.ptr, c.GL_STATIC_DRAW);
+        err.checkGLError("updateMesh: glBufferData for indices");
+
+        // Update index count
+        self.index_count = indices.len;
+
+        // Unbind everything
+        c.glBindVertexArray(0);
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, 0);
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
+    
+
+    // ============================================================
     // Public API: Destruction Function
     // ============================================================
 
