@@ -33,7 +33,6 @@ pub fn main() !void {
 
     // create a Renderer
     var renderer = try zune.graphics.Renderer.create(allocator, .{
-        .clear_color = .{ 0.1, 0.1, 0.1, 1.0 },
         .initial_viewport = .{
             .x = 0,
             .y = 0,
@@ -45,10 +44,10 @@ pub fn main() !void {
 
 
     //setup time utitilites
-    var time = zune.core.Time.init(.{
-        .target_fps = 120,
-        .fixed_timestep = 1.0 / 60.0,
-    }); 
+    //var time = zune.core.Time.init(.{
+    //    .target_fps = 120,
+    //    .fixed_timestep = 1.0 / 60.0,
+    //}); 
 
 
 
@@ -99,15 +98,15 @@ pub fn main() !void {
     while (!window.shouldClose()) {
 
         // ==== Update Variables ==== //
-        time.update();
+        //time.update();
 
         // Get delta time
-        const dt = time.getDelta();
+        //const dt = time.getDelta();
 
 
         // ==== Process Input ==== //      
         const mouse_pos = window.input.?.getMousePosition();   
-        camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), dt);
+        camera_controller.handleMouseMovement(@as(f32, @floatCast(mouse_pos.x)), @as(f32, @floatCast(mouse_pos.y)), 1 / 60);
 
         // Check input states
         if (window.input.?.isKeyHeld(.KEY_SPACE)) {
@@ -117,11 +116,11 @@ pub fn main() !void {
 
         // ==== Update Program ==== //
         // Fixed updates (at fixed timestep intervals)
-        while (time.shouldFixedUpdate()) {
-            const fixed_dt = time.getFixedTimestep();
-            _ = fixed_dt;
-            // Update physics with fixed_dt...
-        }
+        //while (time.shouldFixedUpdate()) {
+        //    const fixed_dt = time.getFixedTimestep();
+        //    _ = fixed_dt;
+        //    // Update physics with fixed_dt...
+        //}
 
         transform_2.rotate(i, i / 2, 0.0);
 

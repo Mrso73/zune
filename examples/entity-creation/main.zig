@@ -54,7 +54,7 @@ pub fn main() !void {
 
     // create a camera
     var perspective_camera = zune.graphics.Camera.initPerspective(renderer, std.math.degreesToRadians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 100.0);
-    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 75.0});
+    perspective_camera.setPosition(.{ .x = 0.0, .y = 0.0, .z = 75});
     perspective_camera.lookAt(.{ .x = 0.0, .y = 0.0, .z = 0.0});
 
     const initial_mouse_pos = window.input.?.getMousePosition();
@@ -75,6 +75,44 @@ pub fn main() !void {
     defer _ = cube_model.release();
 
     try cube_model.addMeshMaterial(cube_mesh, material);
+
+
+    // Triangle vertices (x, y, z)
+    const triangle_pos_data = [_]f32{
+        -0.5, -0.5, 0.0,  // Vertex 0: bottom left
+        0.5, -0.5, 0.0,  // Vertex 1: bottom right
+        0.0,  0.5, 0.0,  // Vertex 2: top center
+    };
+
+    // Triangle indices (counter-clockwise winding)
+    const triangle_indices = [_]u32{
+        0, 1, 2
+    };
+
+    var clr_shader = try zune.graphics.Shader.createColorShader(allocator);
+    defer _ = clr_shader.release();
+    const dynamic_material = try zune.graphics.Material.create(allocator, clr_shader, .{ 1.0, 1.0, 1.0, 1.0 }, null);
+    defer _ = dynamic_material.release();
+    const dynamic_mesh = try zune.graphics.Mesh.create(allocator, &triangle_pos_data, &triangle_indices, 3);
+    defer _ = dynamic_mesh.release();
+    var dynamic_model = try zune.graphics.Model.create(allocator);
+    defer _ = dynamic_model.release();
+
+    try dynamic_model.addMeshMaterial(dynamic_mesh, dynamic_material);
+
+    // Square vertices (x, y, z)
+    const square_pos_data = [_]f32{
+        -0.5, -0.5, 0.0,  // Vertex 0: bottom left
+        0.5, -0.5, 0.0,  // Vertex 1: bottom right
+        0.5,  0.5, 0.0,  // Vertex 2: top right
+        -0.5,  0.5, 0.0,  // Vertex 3: top left
+    };
+
+    // Square indices (two triangles, counter-clockwise winding)
+    const square_indices = [_]u32{
+        0, 1, 2,  // First triangle
+        0, 2, 3   // Second triangle
+    };
 
 
 
@@ -124,6 +162,19 @@ pub fn main() !void {
         try registry.addComponent(entity, zune.ecs.components.ModelComponent.init(cube_model));
     }
 
+    const dynamic = try registry.createEntity();
+    try registry.addComponent(dynamic, zune.ecs.components.ModelComponent.init(dynamic_model));
+
+    var transform = zune.ecs.components.TransformComponent.identity();
+    transform.setPosition(
+            3,
+            0.0,
+            0.0,
+    );
+    try registry.addComponent(dynamic, transform);
+
+
+
 
 
     // ==== Main Loop ==== //
@@ -141,10 +192,13 @@ pub fn main() !void {
         // ==== Update Program ==== //
         try updatePhysics(registry);
 
+        if (window.input.?.isKeyPressed(.KEY_SPACE)) try dynamic_mesh.updateMesh(&square_pos_data, &square_indices, 3);
+        if (window.input.?.isKeyReleased(.KEY_SPACE)) try dynamic_mesh.updateMesh(&triangle_pos_data, &triangle_indices, 3);
+
 
         // ==== Drawing to the screen ==== //
         renderer.clear();
-        try render(perspective_camera, registry);
+        try render(&perspective_camera, registry);
 
         try window.pollEvents();
         window.swapBuffers();   
@@ -183,8 +237,8 @@ fn updatePhysics(registry: *zune.ecs.Registry) !void {
     while (try query.next()) |components| {
 
         // Update position
-        components.transform.position[0] += components.velocity.x;
-        components.transform.position[1] += components.velocity.y;
+        components.transform.position.x += components.velocity.x;
+        components.transform.position.y += components.velocity.y;
 
         // Update lifetime
         components.life.remaining -= 1.0 / 60.0;
@@ -195,7 +249,7 @@ fn updatePhysics(registry: *zune.ecs.Registry) !void {
 }
 
 
-pub fn render(camera: zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
+pub fn render(camera: *zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
     // Query for entities with all required components
     var query = try registry.query(struct {
         transform: *zune.ecs.components.TransformComponent,

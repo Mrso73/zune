@@ -35,7 +35,7 @@ pub fn main() !void {
 
 
     // create a Resource Manager
-    var resource_manager = try zune.graphics.ResourceManager.create(allocator);
+    var resource_manager = try zune.graphics.ResourceManager.create(allocator, .{});
     defer resource_manager.releaseAll() catch {};
 
 
@@ -45,10 +45,10 @@ pub fn main() !void {
 
 
     //setup time utitilites
-    var time = zune.core.Time.init(.{
-        .target_fps = 120,
-        .fixed_timestep = 1.0 / 60.0,
-    });
+    //var time = zune.core.Time.init(.{
+    //    .target_fps = 120,
+    //    .fixed_timestep = 1.0 / 60.0,
+    //});
 
 
 
@@ -108,7 +108,7 @@ pub fn main() !void {
     while (!window.shouldClose()) {      
 
         // ==== Update Variables ==== //
-        time.update();  
+        //try time.update();  
 
 
         // ==== Process Input ==== //
@@ -123,7 +123,7 @@ pub fn main() !void {
 
         // ==== Drawing to the screen ==== //
         renderer.clear();
-        try render(perspective_camera, registry);
+        try render(&perspective_camera, registry);
 
         try window.pollEvents();
         window.swapBuffers();
@@ -149,22 +149,22 @@ fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !
         // Update position
         if (input.isKeyHeld(.KEY_W)) {
             components.velocity.z = -0.05;
-            components.transform.position[2] += components.velocity.z;
+            components.transform.position.z += components.velocity.z;
         }
 
         if (input.isKeyHeld(.KEY_S)) {
             components.velocity.z = 0.05;
-            components.transform.position[2] += components.velocity.z;
+            components.transform.position.z += components.velocity.z;
         }
 
         if (input.isKeyHeld(.KEY_D)) {
             components.velocity.x = 0.05;
-            components.transform.position[0] += components.velocity.x;
+            components.transform.position.x += components.velocity.x;
         }
 
         if (input.isKeyHeld(.KEY_A)) {
             components.velocity.x = -0.05;
-            components.transform.position[0] += components.velocity.x;
+            components.transform.position.x += components.velocity.x;
         }
 
         if (input.wasKeyJustPressed(.KEY_K, 60)) {
@@ -178,7 +178,7 @@ fn playerMovementSystem(registry: *zune.ecs.Registry, input: *zune.core.Input) !
 }
 
 
-pub fn render(camera: zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
+pub fn render(camera: *zune.graphics.Camera, registry: *zune.ecs.Registry) !void {
     // Query for entities with all required components
     var query = try registry.query(struct {
         transform: *zune.ecs.components.TransformComponent,
