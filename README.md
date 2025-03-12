@@ -1,7 +1,7 @@
 # Zune - A Zig-based OpenGL Game Engine
 
-Zune is a 2D/3D game engine being developed in the [Zig programming language](https://ziglang.org/), using both OpenGL and GLFW. 
-It started as a personal project written in the programming language Odin, but I have since decided to
+Zune is a 2D/3D game engine being developed in the [Zig programming language](https://ziglang.org/), using OpenGL, GLFW, and 
+some other libraries. It started as a personal project written in the programming language Odin, but I have since decided to
 re-write the framework in the Zig programming language because i have taken a liking to it.
 
 
