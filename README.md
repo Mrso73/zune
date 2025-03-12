@@ -7,7 +7,7 @@ re-write the framework in the Zig programming language because i have taken a li
 
 ## Features
 
-- **3D-first architecture** – While 2D rendering is possible, all objects exist within 3D world space.
+- **3D-first architecture** – While 2D rendering is possible, all objects exist within 3D space.
 - **High-level API design** – Provides relatively high-level API with low-level control.
 - **Entity Component System (ECS)** – Modular and extensible entity management.
 - **Efficient resource management** – Optimized handling of textures, shaders, and models.
